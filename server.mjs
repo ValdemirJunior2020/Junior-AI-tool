@@ -42,7 +42,7 @@ app.use((req, res, next) => {
 });
 app.get("/api/health", (_req, res) => res.json({ ok: true, runtime: "local", retentionDays: 7, emailConfigured: mailConfigured }));
 app.use("/api/auth", authRouter);
-const workLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 16, standardHeaders: "draft-7", legacyHeaders: false });
+const workLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 16, standardHeaders: "draft-7", legacyHeaders: false, keyGenerator: req => req.user.id });
 let gpuBusy = false;
 app.get("/api/models", requireUser, async (_req, res) => {
   try {
