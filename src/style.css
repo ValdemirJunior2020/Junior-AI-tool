@@ -85,3 +85,19 @@
 .junior-connecting-indicator{display:flex;justify-content:center;align-items:center;gap:9px;min-height:44px;margin-bottom:16px;color:#686f9e;font-size:12px;font-weight:600}
 .junior-connecting-card>.primary{min-height:46px;justify-content:center}
 @media(max-width:570px){.junior-connecting-card{padding:34px 22px 26px}.junior-connecting-card h1{font-size:23px}.junior-connecting-page .auth-brand{margin-bottom:24px}}
+
+
+/* Two-language selector: shown beside the logo on login and in the app header. */
+.auth-header{display:flex;align-items:center;justify-content:center;gap:14px;margin:0 auto 27px;width:min(440px,100%);flex-wrap:wrap}
+.auth-header .auth-brand{margin:0}
+.language-flags{display:inline-flex;align-items:center;gap:6px;flex-shrink:0}
+.language-flag{display:grid;place-items:center;width:37px;height:37px;padding:3px;border:2px solid transparent;border-radius:50%;background:transparent;transition:border-color .15s,transform .15s}
+.language-flag img{width:27px;height:27px;border-radius:50%;object-fit:contain;display:block}
+.language-flag:hover{transform:translateY(-1px);background:#f2f4ff}
+.language-flag.active{border-color:#7b71d8;background:#f6f5ff;box-shadow:0 0 0 2px #ece9ff}
+.language-flag:focus-visible{outline:3px solid #7b71d8;outline-offset:2px}
+.auth-page,.auth-card,.auth-card label,.password-field{min-width:0}
+.auth-card input{max-width:100%;min-width:0}
+.auth-card{overflow-wrap:anywhere}
+@media(max-width:760px){.topbar .language-flags{gap:2px}.topbar .language-flag{height:31px;width:31px;padding:2px}.topbar .language-flag img{width:23px;height:23px}}
+@media(max-width:400px){.auth-header{gap:8px}.topbar .page-name{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar .model-ready{display:none}}
