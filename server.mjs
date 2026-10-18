@@ -97,7 +97,7 @@ function startNextJob() {
   });
 }
 async function processChatJob(job) {
-  const { prompt, model, chatId: cid, fileIds, userId } = job;
+  const { prompt, model, chatId: cid, fileIds, userId, locale } = job;
   const req = { user: { id: userId } };
   let chat = cid ? db.prepare("SELECT id,title FROM chats WHERE id=? AND user_id=?").get(cid, userId) : null;
   if (cid && !chat) throw new Error("Chat not found");
@@ -126,7 +126,7 @@ async function processChatJob(job) {
     const response = await fetch(OLLAMA + "/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(180000),
       body: JSON.stringify({ model, stream: false, messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: SYSTEM_PROMPT + (locale === "pt-BR" ? "\nResponda em português brasileiro (PT-BR), mantendo as respostas claras e naturais, a menos que o usuário solicite explicitamente outro idioma." : "") },
         ...history.map(x => ({ role: x.role, content: x.content })), item
       ], options: { num_predict: 2300, temperature: 0.45 } })
     });
@@ -154,7 +154,7 @@ app.post("/api/chat", requireUser, workLimiter, (req, res) => {
   if (cid && !db.prepare("SELECT 1 FROM chats WHERE id=? AND user_id=?").get(cid, req.user.id)) return res.status(404).json({ error: "Chat not found" });
   if ([...jobs.values()].some(j => j.userId === req.user.id && ["waiting","running"].includes(j.state))) return res.status(409).json({ error: "You already have a request in line. Please wait for it to finish." });
   if (waiting.length >= MAX_WAITING) return res.status(429).json({ error: "The waiting line is full. Please try again shortly." });
-  const job = { id: newId(), kind: "chat", userId: req.user.id, prompt, model, chatId: cid, fileIds: Array.isArray(req.body.fileIds) ? req.body.fileIds.slice(0,4) : [], state: "waiting", createdAt: now() };
+  const job = { id: newId(), kind: "chat", userId: req.user.id, prompt, model, locale: req.body.locale === "pt-BR" ? "pt-BR" : "en", chatId: cid, fileIds: Array.isArray(req.body.fileIds) ? req.body.fileIds.slice(0,4) : [], state: "waiting", createdAt: now() };
   jobs.set(job.id, job);
   waiting.push(job);
   res.status(202).json(publicJob(job));
