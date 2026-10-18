@@ -46,7 +46,6 @@ app.use((req, res, next) => {
 app.get("/api/health", (_req, res) => res.json({ ok: true, runtime: "local", retentionDays: 7, emailConfigured: mailConfigured }));
 app.use("/api/auth", authRouter);
 const workLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 16, standardHeaders: "draft-7", legacyHeaders: false, keyGenerator: req => req.user.id });
-let gpuBusy = false;
 app.get("/api/models", requireUser, async (_req, res) => {
   try {
     const resp = await fetch(OLLAMA + "/api/tags", { signal: AbortSignal.timeout(4000) });
@@ -73,30 +72,28 @@ app.get("/api/logs", requireUser, (req, res) => res.json({ logs: db.prepare("SEL
 
 const MAX_WAITING = 12;
 const JOB_TTL_MS = 20 * 60 * 1000;
-const chatJobs = new Map();
+const jobs = new Map();
 const waiting = [];
-let runningChat = null;
+let activeJob = null;
 function publicJob(job) {
   const position = job.state === "waiting" ? waiting.indexOf(job) + 1 : 0;
   return { id: job.id, status: job.state, position, waiting: waiting.length,
     ...(job.state === "finished" ? { result: job.result } : {}),
     ...(job.state === "failed" ? { error: job.error } : {}) };
 }
-function nextChatJob() {
-  if (runningChat || gpuBusy || !waiting.length) return;
+function startNextJob() {
+  if (activeJob || !waiting.length) return;
   const job = waiting.shift();
-  runningChat = job;
-  gpuBusy = true;
+  activeJob = job;
   job.state = "running";
-  void processChatJob(job).catch(error => {
+  void (job.kind === "image" ? processImageJob(job) : processChatJob(job)).catch(error => {
     job.state = "failed";
     job.error = "Junior AI could not finish this request: " + safeText(error.message || String(error), 160);
   }).finally(() => {
     if (job.state === "running") job.state = "finished";
     job.completedAt = now();
-    gpuBusy = false;
-    runningChat = null;
-    setImmediate(nextChatJob);
+    activeJob = null;
+    setImmediate(startNextJob);
   });
 }
 async function processChatJob(job) {
@@ -155,17 +152,17 @@ app.post("/api/chat", requireUser, workLimiter, (req, res) => {
   if (!prompt || !/^[\w./:-]{1,120}$/.test(model)) return res.status(400).json({ error: "AI model unavailable or prompt empty" });
   if (isBlocked(prompt)) return res.status(422).json({ error: "This request does not meet Junior AI family-safe rules" });
   if (cid && !db.prepare("SELECT 1 FROM chats WHERE id=? AND user_id=?").get(cid, req.user.id)) return res.status(404).json({ error: "Chat not found" });
-  if ([...chatJobs.values()].some(j => j.userId === req.user.id && ["waiting","running"].includes(j.state))) return res.status(409).json({ error: "You already have a request in line. Please wait for it to finish." });
+  if ([...jobs.values()].some(j => j.userId === req.user.id && ["waiting","running"].includes(j.state))) return res.status(409).json({ error: "You already have a request in line. Please wait for it to finish." });
   if (waiting.length >= MAX_WAITING) return res.status(429).json({ error: "The waiting line is full. Please try again shortly." });
-  const job = { id: newId(), userId: req.user.id, prompt, model, chatId: cid, fileIds: Array.isArray(req.body.fileIds) ? req.body.fileIds.slice(0,4) : [], state: "waiting", createdAt: now() };
+  const job = { id: newId(), kind: "chat", userId: req.user.id, prompt, model, chatId: cid, fileIds: Array.isArray(req.body.fileIds) ? req.body.fileIds.slice(0,4) : [], state: "waiting", createdAt: now() };
   chatJobs.set(job.id, job);
   waiting.push(job);
   res.status(202).json(publicJob(job));
-  setImmediate(nextChatJob);
+  setImmediate(startNextJob);
 });
 app.get("/api/chat/jobs/:id", requireUser, (req, res) => {
   const job = chatJobs.get(req.params.id);
-  if (!job || job.userId !== req.user.id) return res.status(404).json({ error: "Request not found" });
+  if (!job || job.kind !== "chat" || job.userId !== req.user.id) return res.status(404).json({ error: "Request not found" });
   res.json(publicJob(job));
 });
 setInterval(() => {
@@ -232,29 +229,45 @@ app.get("/api/images/status", requireUser, async (req, res) => {
     note: permitted ? online ? "Official Fooocus is running locally" : "Start the official Fooocus AMD launcher" :
       "Image generation is restricted until the owner enables local Fooocus and moderation" });
 });
-app.post("/api/images/generate", requireUser, workLimiter, async (req, res) => {
-  const prompt = safeText(req.body.prompt, 1500);
-  if (!prompt || isBlocked(prompt)) { audit(req.user.id, "blocked_image"); return res.status(422).json({ error: "This request is not allowed by Junior AI's family-safe image policy" }); }
-  if (!imagesAvailableTo(req.user)) return res.status(403).json({ error: "Local Fooocus image generation is not enabled for this account" });
-  if (gpuBusy) return res.status(429).json({ error: "The local GPU is busy" });
-  gpuBusy = true;
+async function processImageJob(job) {
   try {
-    audit(req.user.id, "official_fooocus_started");
-    const generated = await generateUsingOfficialFooocus(prompt);
+    audit(job.userId, "official_fooocus_started");
+    const generated = await generateUsingOfficialFooocus(job.prompt);
     const fileInfo = await stat(generated.path);
     if (fileInfo.size > 18_000_000) {
       await unlink(generated.path).catch(() => {});
       throw Error("Image exceeds the private storage limit");
     }
     const imageId = newId();
-    // The automation already copied the result to a random private file.
-    db.prepare("INSERT INTO images VALUES (?,?,?,?)").run(imageId, req.user.id, generated.path, now());
-    audit(req.user.id, "official_fooocus_finished");
-    res.json({ id: imageId, url: "/api/images/" + imageId });
-  } catch (e) {
-    audit(req.user.id, "official_fooocus_failed");
-    res.status(503).json({ error: "Official Fooocus failed: " + safeText(String(e.message), 180) });
-  } finally { gpuBusy = false; setImmediate(nextChatJob); }
+    db.prepare("INSERT INTO images VALUES (?,?,?,?)").run(imageId, job.userId, generated.path, now());
+    audit(job.userId, "official_fooocus_finished");
+    job.result = { id: imageId, url: "/api/images/" + imageId };
+  } catch (error) {
+    audit(job.userId, "official_fooocus_failed");
+    throw error;
+  }
+}
+app.post("/api/images/generate", requireUser, workLimiter, (req, res) => {
+  const prompt = safeText(req.body.prompt, 1500);
+  if (!prompt || isBlocked(prompt)) {
+    audit(req.user.id, "blocked_image");
+    return res.status(422).json({ error: "This request is not allowed by Junior AI's family-safe image policy" });
+  }
+  if (!imagesAvailableTo(req.user)) return res.status(403).json({ error: "Local Fooocus image generation is not enabled for this account" });
+  if ([...jobs.values()].some(j => j.userId === req.user.id && ["waiting","running"].includes(j.state))) {
+    return res.status(409).json({ error: "You already have a request in line. Please wait for it to finish." });
+  }
+  if (waiting.length >= MAX_WAITING) return res.status(429).json({ error: "The waiting line is full. Please try again shortly." });
+  const job = { id: newId(), kind: "image", userId: req.user.id, prompt, state: "waiting", createdAt: now() };
+  jobs.set(job.id, job);
+  waiting.push(job);
+  res.status(202).json(publicJob(job));
+  setImmediate(startNextJob);
+});
+app.get("/api/images/jobs/:id", requireUser, (req, res) => {
+  const job = jobs.get(req.params.id);
+  if (!job || job.kind !== "image" || job.userId !== req.user.id) return res.status(404).json({ error: "Request not found" });
+  res.json(publicJob(job));
 });
 app.get("/api/images/:id", requireUser, (req, res) => {
   const img = db.prepare("SELECT filepath FROM images WHERE id=? AND user_id=? AND created>?").get(req.params.id, req.user.id, now() - WEEK);
