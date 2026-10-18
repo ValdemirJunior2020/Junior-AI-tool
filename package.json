@@ -11,7 +11,10 @@
     "build": "vite build",
     "start": "node server.mjs",
     "test": "node --test",
-    "admin": "node scripts/create-admin.mjs"
+    "admin": "node scripts/create-admin.mjs",
+    "admin:env": "node scripts/create-admin.mjs --from-env",
+    "fooocus:setup": "node scripts/setup-fooocus-amd.mjs",
+    "fooocus:start": "node scripts/start-fooocus-amd.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.2.0",
@@ -28,7 +31,8 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "lucide-react": "^0.468.0",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "playwright-core": "^1.56.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
