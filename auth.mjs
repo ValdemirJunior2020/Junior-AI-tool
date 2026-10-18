@@ -23,7 +23,7 @@ function session(res, user) {
 export function userFor(req) {
   const raw = req.cookies.junior_session;
   if (!raw || typeof raw !== "string") return null;
-  return db.prepare("SELECT u.id,u.email,u.role,u.verified FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.expires>?").get(digest(raw), now()) || null;
+  return db.prepare("SELECT u.id,u.email,u.role,u.verified,u.display_name FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.expires>?").get(digest(raw), now()) || null;
 }
 export function requireUser(req, res, next) {
   req.user = userFor(req);
@@ -103,6 +103,12 @@ router.post("/reset/confirm", limit, async (req, res, next) => {
     })();
     audit(row.user_id, "password_reset"); res.json({ ok: true });
   } catch (e) { next(e); }
+});
+router.patch("/profile", requireUser, (req, res) => {
+  const name = safeText(req.body.displayName, 60);
+  if (name.length < 1 || /[<>]/.test(name)) return res.status(400).json({ error: "Enter a display name (1–60 characters)" });
+  db.prepare("UPDATE users SET display_name=? WHERE id=?").run(name, req.user.id);
+  audit(req.user.id, "profile_updated"); res.json({ display_name: name });
 });
 router.post("/password", requireUser, async (req, res, next) => {
   try {
