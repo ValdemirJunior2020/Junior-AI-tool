@@ -207,8 +207,8 @@ function App() {
         if (status.status === "finished") { result = status.result; break; }
         if (status.status === "failed") throw new Error(status.error || "AI generation failed");
         setQueueStatus(status.status === "waiting"
-          ? "You're #" + status.position + " in line. Junior AI will answer when it's your turn."
-          : "It's your turn! Junior AI is thinking...");
+          ? (language === "pt-BR" ? "Você está na posição #" + status.position + ". Junior AI responderá quando chegar sua vez." : "You're #" + status.position + " in line. Junior AI will answer when it's your turn.")
+          : (language === "pt-BR" ? "Chegou sua vez! Junior AI está pensando..." : "It's your turn! Junior AI is thinking..."));
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
       if (!result) throw new Error("The request is taking longer than expected. Please check your conversations before retrying.");
@@ -264,7 +264,7 @@ function App() {
           }
         } else {
           const position = Math.max(1, Number(status.position) || 1);
-          setImageProgress(prev => ({ ...prev, stage: "waiting", percent: 5, label: "You're #" + position + " in line — waiting for your turn..." }));
+          setImageProgress(prev => ({ ...prev, stage: "waiting", percent: 5, label: language === "pt-BR" ? "Você está na posição #" + position + " — aguardando sua vez..." : "You're #" + position + " in line — waiting for your turn..." }));
         }
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
@@ -367,9 +367,9 @@ function App() {
             <h1><span>{t("Hello there.")}</span><br/>{t("How can I help you today?")}</h1>
             
             <div className="prompts">
-              <button onClick={() => setText("Review this React code and suggest fixes with tests.")}><Code2 size={21}/><span>{t("Review my code")}</span></button>
-              <button onClick={() => {setText("Analyze the uploaded Excel workbook: totals, outliers and trends.");fileInput.current?.click();}}><FileSpreadsheet size={21}/><span>{t("Analyze Excel")}</span></button>
-              <button onClick={() => {setText("Summarize this document and identify the most important facts.");fileInput.current?.click();}}><FileText size={21}/><span>{t("Read deep documents")}</span></button>
+              <button onClick={() => setText(language === "pt-BR" ? "Revise este código React e sugira correções e testes." : "Review this React code and suggest fixes with tests.")}><Code2 size={21}/><span>{t("Review my code")}</span></button>
+              <button onClick={() => {setText(language === "pt-BR" ? "Analise a planilha Excel enviada: totais, valores fora do padrão e tendências." : "Analyze the uploaded Excel workbook: totals, outliers and trends.");fileInput.current?.click();}}><FileSpreadsheet size={21}/><span>{t("Analyze Excel")}</span></button>
+              <button onClick={() => {setText(language === "pt-BR" ? "Resuma este documento e destaque os fatos mais importantes." : "Summarize this document and identify the most important facts.");fileInput.current?.click();}}><FileText size={21}/><span>{t("Read deep documents")}</span></button>
               <button onClick={() => {setTab("images");}}><WandSparkles size={21}/><span>{t("Create an image")}</span></button>
             </div>
           </div> : messages.map((m, i) => <div className={"bubble-row " + m.role} key={m.id || i}>
