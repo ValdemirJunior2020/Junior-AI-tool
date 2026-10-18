@@ -134,7 +134,28 @@ function App() {
       setUser(null);
     });
   }, []);
-  async function refresh() {
+  // Automatically recover when the home AI computer reconnects.
+  useEffect(() => {
+    if (!backendOffline) return;
+    let cancelled = false;
+    const checkConnection = async () => {
+      try {
+        const health = await request("/health");
+        if (health.ok !== true || health.runtime !== "local") return;
+        const data = await request("/auth/me");
+        if (cancelled) return;
+        setUser(data.user || null);
+        setBackendOffline(false);
+      } catch {
+        // Connection is still unavailable. Retry quietly; don't expose internals to visitors.
+      }
+    };
+    const interval = setInterval(checkConnection, 12000);
+    const onVisible = () => { if (document.visibilityState === "visible") void checkConnection(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { cancelled = true; clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
+  }, [backendOffline]);
+    async function refresh() {
     const [m, c, f, l, i, g] = await Promise.allSettled([request("/models"), request("/chats"), request("/uploads"), request("/logs"), request("/images/status"), request("/images")]);
     if (m.status === "fulfilled") { const list = m.value.models || []; setModel(old => list.includes(old) ? old : list.find(x => x.includes("coder")) || list[0] || ""); }
     else addLog("model_unavailable", "Start Ollama locally");
@@ -290,18 +311,17 @@ function App() {
     } catch(e) { setNotice(e.message); }
   }
   if (user === undefined) return <div className="boot"><Sparkles className="pulse" size={38}/><span>Starting Junior AI...</span></div>;
-  if (backendOffline) return <div className="auth-page">
+  if (backendOffline) return <div className="auth-page junior-connecting-page">
     <div className="brand auth-brand"><div className="brandmark"><Sparkles size={22}/></div><span>Junior <b>AI</b></span></div>
-    <div className="auth-card">
-      <div className="auth-icon"><ShieldCheck size={27}/></div>
-      <h1>Junior AI is connecting</h1>
-      <p className="muted">The public website is ready, but the secure connection to its local AI computer has not been configured or is temporarily unavailable. No private files or passwords have been uploaded.</p>
-      <div className="info-card"><AlertCircle size={18}/><span>The owner must keep Junior AI running on the Windows PC and maintain the secure HTTPS connection. Try again when the AI computer is online.</span></div>
-      <button className="primary full" onClick={() => window.location.reload()}><RefreshCw size={17}/> Recheck secure connection</button>
-      <div className="privacy-note"><ShieldCheck size={15}/> This site will not accept account details until its secure server is connected.</div>
+    <div className="auth-card junior-connecting-card" role="status" aria-live="polite">
+      <div className="junior-connecting-icon"><Sparkles size={30}/></div>
+      <h1>Junior AI is getting ready</h1>
+      <p className="muted">We're preparing your experience. Thanks for your patience!</p>
+      <div className="junior-connecting-indicator"><Loader2 className="spin" size={18}/><span>Checking availability automatically...</span></div>
+      <button type="button" className="primary full" onClick={() => window.location.reload()}><RefreshCw size={17}/> Try again now</button>
     </div>
   </div>;
-  
+
   if (!user) return <Auth onLogin={setUser}/>;
   return <div className="shell">
     {sidebar && <button className="mobile-menu-backdrop" type="button" aria-label="Close navigation menu" onClick={() => setSidebar(false)}/>}
