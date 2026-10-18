@@ -17,6 +17,7 @@ if errorlevel 1 (
  pause
  exit /b 1
 )
-echo Run: npm run admin
+echo Edit your LOCAL .env with ADMIN_EMAIL and ADMIN_PASSWORD, then run: npm run admin:env
+echo For AMD Fooocus, set FOOOCUS_DIR in .env and run SETUP-FOOOCUS-AMD.bat
 echo Then double-click START-JUNIOR-AI.bat
 pause
