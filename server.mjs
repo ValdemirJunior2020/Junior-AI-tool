@@ -155,19 +155,19 @@ app.post("/api/chat", requireUser, workLimiter, (req, res) => {
   if ([...jobs.values()].some(j => j.userId === req.user.id && ["waiting","running"].includes(j.state))) return res.status(409).json({ error: "You already have a request in line. Please wait for it to finish." });
   if (waiting.length >= MAX_WAITING) return res.status(429).json({ error: "The waiting line is full. Please try again shortly." });
   const job = { id: newId(), kind: "chat", userId: req.user.id, prompt, model, chatId: cid, fileIds: Array.isArray(req.body.fileIds) ? req.body.fileIds.slice(0,4) : [], state: "waiting", createdAt: now() };
-  chatJobs.set(job.id, job);
+  jobs.set(job.id, job);
   waiting.push(job);
   res.status(202).json(publicJob(job));
   setImmediate(startNextJob);
 });
 app.get("/api/chat/jobs/:id", requireUser, (req, res) => {
-  const job = chatJobs.get(req.params.id);
+  const job = jobs.get(req.params.id);
   if (!job || job.kind !== "chat" || job.userId !== req.user.id) return res.status(404).json({ error: "Request not found" });
   res.json(publicJob(job));
 });
 setInterval(() => {
-  for (const [id, job] of chatJobs) {
-    if ((job.state === "finished" || job.state === "failed") && now() - job.completedAt > JOB_TTL_MS) chatJobs.delete(id);
+  for (const [id, job] of jobs) {
+    if ((job.state === "finished" || job.state === "failed") && now() - job.completedAt > JOB_TTL_MS) jobs.delete(id);
   }
 }, 60000).unref();
 
