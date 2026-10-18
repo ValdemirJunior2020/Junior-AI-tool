@@ -1,6 +1,8 @@
 # Keeps Fooocus AMD available while Junior AI is running.
 # Launched automatically by START-ALL-JUNIOR-AI.bat; no extra software required.
 Set-Location (Split-Path -Parent $PSScriptRoot)
+$ErrorActionPreference = "Continue"
+Write-Host ("Junior AI directory: " + (Get-Location).Path)
 function Test-LocalPort([int]$Port) {
   $client = [System.Net.Sockets.TcpClient]::new()
   try {
@@ -21,7 +23,7 @@ while ($true) {
   Write-Host "Starting Fooocus AMD at http://127.0.0.1:7865 ..." -ForegroundColor Green
   try {
     & npm.cmd run fooocus:start
-    Write-Host "Fooocus has stopped. Restarting in 15 seconds..." -ForegroundColor Yellow
+    Write-Host ("Fooocus stopped (exit code " + $LASTEXITCODE + "). Restarting in 15 seconds...") -ForegroundColor Yellow
   } catch {
     Write-Host ("Fooocus start failed: " + $_.Exception.Message) -ForegroundColor Red
   }
