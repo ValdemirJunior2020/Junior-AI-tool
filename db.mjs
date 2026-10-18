@@ -32,7 +32,7 @@ export const safeText = (v, max = 16000) => typeof v === "string" ? v.trim().sli
 export const goodPassword = (v) => typeof v === "string" && v.length >= 12 && v.length <= 128;
 export async function makePassword(v) {
   const salt = randomBytes(16).toString("hex");
-  const derived = await scrypt(v, salt, 64, { N: 32768, r: 8, p: 1 });
+  const derived = await scrypt(v, salt, 64, { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
   return "scrypt:" + salt + ":" + derived.toString("hex");
 }
 export async function verifyPassword(v, saved) {
@@ -40,7 +40,7 @@ export async function verifyPassword(v, saved) {
   if (parts.length !== 3 || parts[0] !== "scrypt") return false;
   const expected = Buffer.from(parts[2], "hex");
   if (expected.length !== 64) return false;
-  const actual = await scrypt(v, parts[1], 64, { N: 32768, r: 8, p: 1 });
+  const actual = await scrypt(v, parts[1], 64, { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
   return timingSafeEqual(expected, actual);
 }
 export function audit(userId, event, detail = "") {
