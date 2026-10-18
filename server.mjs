@@ -269,6 +269,11 @@ app.get("/api/images/jobs/:id", requireUser, (req, res) => {
   if (!job || job.kind !== "image" || job.userId !== req.user.id) return res.status(404).json({ error: "Request not found" });
   res.json(publicJob(job));
 });
+app.get("/api/images", requireUser, (req, res) => {
+  const images = db.prepare("SELECT id,created FROM images WHERE user_id=? AND created>? ORDER BY created DESC LIMIT 50").all(req.user.id, now() - WEEK)
+    .map(img => ({ id: img.id, url: "/api/images/" + img.id, created: img.created }));
+  res.json({ images });
+});
 app.get("/api/images/:id", requireUser, (req, res) => {
   const img = db.prepare("SELECT filepath FROM images WHERE id=? AND user_id=? AND created>?").get(req.params.id, req.user.id, now() - WEEK);
   if (!img || !existsSync(img.filepath)) return res.status(404).end();
