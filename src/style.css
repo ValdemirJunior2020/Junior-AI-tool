@@ -50,3 +50,27 @@
   .page-content{padding:22px 14px}
 }
 @media(max-width:390px){.model-ready{padding:6px 8px;font-size:10px}.page-name{font-size:13px}.prompts{grid-template-columns:1fr}}
+
+
+/* Fooocus queue and estimated image generation timeline */
+.image-progress-card{margin-top:18px;padding:16px;border:1px solid #dce5f5;border-radius:15px;background:#f9faff;box-shadow:0 4px 12px #262f5709}
+.image-progress-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.image-progress-label{font-weight:700;font-size:13px;color:#424d73;line-height:1.4;overflow-wrap:anywhere}
+.image-progress-percent{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;color:#625ac0;white-space:nowrap}
+.image-progress-track{height:12px;width:100%;border-radius:99px;background:#e9eafa;overflow:hidden}
+.image-progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#5579e7,#8c66d8);transition:width .85s ease-out;position:relative}
+.image-progress-fill:after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 25%,rgba(255,255,255,.36) 50%,transparent 75%);animation:image-glimmer 2s linear infinite}
+.image-progress-meta{display:flex;justify-content:space-between;gap:14px;margin-top:10px;color:#798199;font-size:11px;font-variant-numeric:tabular-nums}
+.image-progress-ready{background:#f1faf5;border-color:#c4e9d0}
+.image-progress-ready .image-progress-fill{background:linear-gradient(90deg,#33a978,#72d19a)}
+.image-progress-failed{background:#fff6f5;border-color:#f0ceca}
+.image-progress-failed .image-progress-fill{background:#bd6969}
+@keyframes image-glimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+@media(max-width:760px){
+  .image-compose .primary{min-height:46px;font-size:14px}
+  .image-progress-card{padding:14px 12px;margin-top:14px}
+  .image-progress-label{font-size:12px}
+  .image-progress-percent{font-size:20px}
+  .image-progress-meta{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){.image-progress-fill:after{animation:none}.image-progress-fill{transition:none}}
