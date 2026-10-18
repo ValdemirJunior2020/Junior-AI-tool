@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import nodemailer from "nodemailer";
 import { randomBytes } from "node:crypto";
 import { db, now, newId, digest, WEEK, safeText, goodPassword, makePassword, verifyPassword, audit, eraseFiles } from "./db.mjs";
+import { verifyTotp } from "./mfa.mjs";
 
 export const router = express.Router();
 const limit = rateLimit({ windowMs: 15 * 60 * 1000, limit: 12, standardHeaders: "draft-7", legacyHeaders: false });
@@ -77,7 +78,8 @@ router.post("/login", limit, async (req, res, next) => {
     const u = db.prepare("SELECT * FROM users WHERE email=?").get(normalizeEmail(req.body.email));
     if (!u || !await verifyPassword(String(req.body.password || ""), u.pass)) return res.status(401).json({ error: "Invalid login" });
     if (!u.verified) return res.status(403).json({ error: "Verify your email to continue" });
-    session(res, u); audit(u.id, "login"); res.json({ user: { id: u.id, email: u.email, role: u.role } });
+    if (u.role === "admin" && !verifyTotp(u.totp_secret, req.body.otp)) return res.status(401).json({ error: "Invalid administrator authenticator code" });
+    session(res, u); audit(u.id, "login"); res.json({ user: { id: u.id, email: u.email, role: u.role, display_name: u.display_name } });
   } catch (e) { next(e); }
 });
 router.post("/logout", requireUser, (req, res) => {
