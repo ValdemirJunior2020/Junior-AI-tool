@@ -11,6 +11,7 @@ await mkdir(STORE, { recursive: true });
 export const db = new Database(path.join(DATA, "junior.sqlite"));
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
+db.pragma("secure_delete = ON");
 db.exec([
 "CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, pass TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'user', verified INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL)",
 "CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires INTEGER NOT NULL)",
@@ -22,6 +23,7 @@ db.exec([
 "CREATE TABLE IF NOT EXISTS audit (id TEXT PRIMARY KEY, user_id TEXT, event TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL)"
 ].join(";") + ";");
 if (!db.pragma("table_info(users)").some(col => col.name === "display_name")) db.exec("ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''");
+if (!db.pragma("table_info(users)").some(col => col.name === "totp_secret")) db.exec("ALTER TABLE users ADD COLUMN totp_secret TEXT NOT NULL DEFAULT ''");
 export const now = () => Date.now();
 export const newId = () => randomBytes(16).toString("hex");
 export const digest = (v) => createHash("sha256").update(v).digest("hex");
@@ -63,4 +65,5 @@ export async function cleanup() {
     db.prepare("DELETE FROM tokens WHERE expires < ?").run(now());
     db.prepare("DELETE FROM chats WHERE created < ?").run(oldest);
   })();
+  db.pragma("wal_checkpoint(TRUNCATE)");
 }
