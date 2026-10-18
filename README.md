@@ -48,6 +48,16 @@ Registration is **disabled until SMTP is configured**. Configure SMTP_HOST, SMTP
 
 **Limitations:** DirectML is experimental for this GPU and Fooocus uses an internal Gradio interface rather than a stable production API. The automation depends on that UI's selectors and must be tested on your actual Fooocus release before public deployment. Chrome must be installed on the Windows machine. Generations on this GPU may be slow; initial model downloads need internet. This feature does not require or install Fooocus-API.
 
+## Netlify public interface (separate from local AI)
+
+A Netlify project named junior-ai-tool has been created under the connected account:
+https://app.netlify.com/projects/junior-ai-tool
+
+Netlify can host only the React interface; the Ollama/Fooocus backend and SQLite still run on the Windows PC.
+To publish the first version, connect this GitHub repository (main branch) from Netlify's Continuous Deployment settings. The included netlify.toml builds the site using npm run build:netlify and publishes dist. Without a Pangolin URL the frontend displays a safe "connecting" message rather than accepting user signups. Never put your LOCAL .env or administrator password on Netlify.
+
+After Pangolin is configured, set the Netlify site build variable JUNIOR_BACKEND_URL to the external HTTPS Pangolin backend hostname, then redeploy and set PUBLIC_URL on your Windows .env to the public Netlify URL. Complete instructions are in docs/NETLIFY-PANGOLIN.md.
+
 ## Expose worldwide using self-hosted Pangolin
 
 1. Obtain a public Linux VPS and domain (these **may cost money**; no paid AI APIs does not make hosting free).
