@@ -152,7 +152,7 @@ app.post("/api/chat", requireUser, workLimiter, (req, res) => {
   const prompt = safeText(req.body.prompt, 16000);
   const model = safeText(req.body.model, 120);
   const cid = safeText(req.body.chatId, 64);
-  if (!prompt || !/^[\\w./:-]{1,120}$/.test(model)) return res.status(400).json({ error: "AI model unavailable or prompt empty" });
+  if (!prompt || !/^[\w./:-]{1,120}$/.test(model)) return res.status(400).json({ error: "AI model unavailable or prompt empty" });
   if (isBlocked(prompt)) return res.status(422).json({ error: "This request does not meet Junior AI family-safe rules" });
   if (cid && !db.prepare("SELECT 1 FROM chats WHERE id=? AND user_id=?").get(cid, req.user.id)) return res.status(404).json({ error: "Chat not found" });
   if ([...chatJobs.values()].some(j => j.userId === req.user.id && ["waiting","running"].includes(j.state))) return res.status(409).json({ error: "You already have a request in line. Please wait for it to finish." });
