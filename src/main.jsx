@@ -57,6 +57,10 @@ function Auth({ onLogin }) {
   return <div className="auth-page">
     <div className="brand auth-brand"><div className="brandmark"><Sparkles size={22}/></div><span>Junior <b>AI</b></span></div>
     <form className="auth-card" onSubmit={submit}>
+      {(mode === "login" || mode === "register") && <div className="auth-tabs" role="group" aria-label="Account access">
+        <button type="button" className={mode === "login" ? "active" : ""} aria-pressed={mode === "login"} onClick={() => { setMode("login"); setMessage(""); }}>Sign in</button>
+        <button type="button" className={mode === "register" ? "active" : ""} aria-pressed={mode === "register"} onClick={() => { setMode("register"); setMessage(""); }}>Create account</button>
+      </div>}
       <div className="auth-icon"><Sparkles size={27}/></div>
       <h1>{mode === "register" ? "Create your account" : mode === "forgot" ? "Reset your password" : mode === "confirm-reset" ? "Choose a new password" : "Welcome to Junior AI"}</h1>
       <p className="muted">Your private AI engine, with a thoughtful and encouraging voice.</p>
@@ -65,8 +69,8 @@ function Auth({ onLogin }) {
       {message && <p className="inline-notice">{message}</p>}
       <button className="primary full" disabled={loading} type="submit">{loading ? <Loader2 className="spin" size={17}/> : <ChevronRight size={17}/>}{mode === "login" ? "Sign in" : mode === "register" ? "Create account" : mode === "forgot" ? "Send reset link" : "Save new password"}</button>
       <div className="auth-switch">
-        {mode === "login" ? <><button type="button" onClick={() => {setMode("register");setMessage("");}}>Create account</button><button type="button" onClick={() => {setMode("forgot");setMessage("");}}>Forgot password?</button></> :
-        <button type="button" onClick={() => {setMode("login");setMessage("");}}>Back to sign in</button>}
+        {mode === "login" ? <button type="button" onClick={() => {setMode("forgot");setMessage("");}}>Forgot your password?</button> :
+        <button type="button" onClick={() => {setMode("login");setMessage("");}}>{mode === "register" ? "Already have an account? Sign in" : "Back to sign in"}</button>}
       </div>
       <div className="privacy-note"><ShieldCheck size={15}/> Private computer processing · No paid AI APIs · Content expires after 7 days</div>
     </form>
@@ -270,8 +274,9 @@ function App() {
         </div>
       </div>}
       {tab === "images" && <section className="page-content"><div className="page-heading"><div className="topic-icon purple"><WandSparkles size={27}/></div><h1>Imagine something new</h1><p>Create images privately with the official Fooocus app and AMD DirectML, running on your own GPU.</p></div>
-        {!imageEnabled && <div className="info-card"><AlertCircle size={19}/><span>Official Fooocus is not available for this account. Configure your local .env and start the AMD launcher. Public access is disabled by default until safety review.</span></div>}
-        <div className="info-card"><Activity size={19}/><span>{imageStatus || "Checking official Fooocus on your PC..."}</span><button className="secondary" type="button" onClick={refresh}><RefreshCw size={15}/> Recheck</button></div>
+        {!imageEnabled && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>Image generation is currently disabled.</strong> {user.role === "admin" ? "Install and start Fooocus AMD, set ENABLE_FOOOCUS=true in your local .env file, then restart Junior AI. The Generate button unlocks after Fooocus is running." : "The owner has not enabled image generation for this account."}</span></div>}
+        {imageEnabled && !imageOnline && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>Fooocus is enabled but offline.</strong> Start it using npm run fooocus:start on your AI computer, then select Recheck. The Generate button unlocks when the local Fooocus service responds.</span></div>}
+        <div className="info-card image-service-status"><Activity size={19}/><span>{imageStatus || "Checking official Fooocus on your PC..."}</span><button className="secondary" type="button" onClick={refresh}><RefreshCw size={15}/> Recheck</button></div>
         <form className="image-compose" onSubmit={createImage}><label>Describe the image<textarea rows={5} value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder="A peaceful, sunlit mountain landscape, cinematic photography..."/></label><button type="submit" className="primary" disabled={busy || !imagePrompt.trim() || !imageEnabled || !imageOnline}>{busy ? <Loader2 className="spin" size={18}/> : <Sparkles size={18}/>} Generate locally</button></form>
         <div className="image-grid">{generatedImages.map((url, i) => <div className="image-result" key={i}><img src={url} alt="AI-generated image"/><a href={url} target="_blank" rel="noreferrer">View full image</a></div>)}</div>
       </section>}
