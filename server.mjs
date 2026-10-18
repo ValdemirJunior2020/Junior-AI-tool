@@ -6,7 +6,8 @@ import rateLimit from "express-rate-limit";
 import multer from "multer";
 import ExcelJS from "exceljs";
 import mammoth from "mammoth";
-import pdfParse from "pdf-parse";
+// Import implementation directly: pdf-parse v1 index.js triggers debug fixture reads from ESM.
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import path from "node:path";
 import { existsSync } from "node:fs";
 import { readFile, writeFile, unlink } from "node:fs/promises";
