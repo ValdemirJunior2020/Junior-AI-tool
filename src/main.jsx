@@ -70,7 +70,7 @@ function Auth({ onLogin }) {
         {mode === "login" ? <><button type="button" onClick={() => {setMode("register");setMessage("");}}>Create account</button><button type="button" onClick={() => {setMode("forgot");setMessage("");}}>Forgot password?</button></> :
         <button type="button" onClick={() => {setMode("login");setMessage("");}}>Back to sign in</button>}
       </div>
-      <div className="privacy-note"><ShieldCheck size={15}/> Local processing · No third-party AI keys · Content expires after 7 days</div>
+      <div className="privacy-note"><ShieldCheck size={15}/> Private computer processing · No paid AI APIs · Content expires after 7 days</div>
     </form>
   </div>;
 }
@@ -251,7 +251,7 @@ function App() {
           {messages.length === 0 ? <div className="welcome">
             <div className="hello-star"><Sparkles size={40}/></div>
             <h1><span>Hello there.</span><br/>How can I help you today?</h1>
-            <p>Build something great, understand a complex file, or explore a new idea. Your work stays on this computer.</p>
+            <p>Build something great, understand a complex file, or explore a new idea. Your content is processed on Junior AI's privately hosted computer and stored for up to 7 days.</p>
             <div className="prompts">
               <button onClick={() => setText("Review this React code and suggest fixes with tests.")}><Code2 size={21}/><span>Review my code</span></button>
               <button onClick={() => {setText("Analyze the uploaded Excel workbook: totals, outliers and trends.");fileInput.current?.click();}}><FileSpreadsheet size={21}/><span>Analyze Excel</span></button>
