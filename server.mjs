@@ -10,7 +10,8 @@ import mammoth from "mammoth";
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import path from "node:path";
 import { existsSync } from "node:fs";
-import { readFile, writeFile, unlink } from "node:fs/promises";
+import { readFile, writeFile, unlink, stat } from "node:fs/promises";
+import { assertLocalFooocusUrl, fooocusHealth, generateUsingOfficialFooocus, purgeFooocusResiduals } from "./fooocus-local.mjs";
 import { db, STORE, now, newId, WEEK, safeText, audit, cleanup, eraseFiles } from "./db.mjs";
 import { router as authRouter, requireUser, requireAdmin, mailConfigured } from "./auth.mjs";
 import { SYSTEM_PROMPT, isBlocked, cleanOutput } from "./policy.mjs";
@@ -19,7 +20,7 @@ const app = express();
 const PORT = Number(process.env.PORT || 3001);
 const PUBLIC_URL = (process.env.PUBLIC_URL || "http://localhost:3001").replace(/\/$/, "");
 const OLLAMA = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
-const FOOOCUS = process.env.FOOOCUS_API_URL || "http://127.0.0.1:8888";
+const FOOOCUS = assertLocalFooocusUrl();
 const localOnly = (value) => { try { const u = new URL(value); return u.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname); } catch { return false; } };
 if (!localOnly(OLLAMA) || !localOnly(FOOOCUS)) throw Error("AI runtimes must bind to loopback, never a cloud host");
 if (process.env.NODE_ENV === "production" && !PUBLIC_URL.startsWith("https://")) throw Error("PUBLIC_URL must use HTTPS in production");
@@ -173,39 +174,45 @@ app.delete("/api/uploads/:id", requireUser, async (req, res) => {
   audit(req.user.id, "upload_deleted");
   res.json({ ok: true });
 });
-app.get("/api/images/status", requireUser, (_req, res) => res.json({ enabled: process.env.ENABLE_FOOOCUS === "true" }));
+const imagesAvailableTo = user => process.env.ENABLE_FOOOCUS === "true" &&
+  (user.role === "admin" || process.env.ALLOW_PUBLIC_IMAGES === "true");
+app.get("/api/images/status", requireUser, async (req, res) => {
+  const permitted = imagesAvailableTo(req.user);
+  const online = permitted ? await fooocusHealth() : false;
+  res.json({ enabled: permitted, online, driver: "official-fooocus-amd-directml",
+    note: permitted ? online ? "Official Fooocus is running locally" : "Start the official Fooocus AMD launcher" :
+      "Image generation is restricted until the owner enables local Fooocus and moderation" });
+});
 app.post("/api/images/generate", requireUser, workLimiter, async (req, res) => {
   const prompt = safeText(req.body.prompt, 1500);
-  if (!prompt || isBlocked(prompt)) { audit(req.user.id, "blocked_image"); return res.status(422).json({ error: "The image prompt is not allowed" }); }
-  if (process.env.ENABLE_FOOOCUS !== "true") return res.status(503).json({ error: "Connect the local Fooocus-API adapter first" });
+  if (!prompt || isBlocked(prompt)) { audit(req.user.id, "blocked_image"); return res.status(422).json({ error: "This request is not allowed by Junior AI's family-safe image policy" }); }
+  if (!imagesAvailableTo(req.user)) return res.status(403).json({ error: "Local Fooocus image generation is not enabled for this account" });
   if (gpuBusy) return res.status(429).json({ error: "The local GPU is busy" });
   gpuBusy = true;
   try {
-    audit(req.user.id, "image_started");
-    const response = await fetch(FOOOCUS + "/v1/generation/text-to-image", {
-      method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(240000),
-      body: JSON.stringify({ prompt, negative_prompt: "nudity, pornography, sexually explicit, gore", image_number: 1, require_base64: true, async_process: false })
-    });
-    if (!response.ok) throw Error("Fooocus replied HTTP " + response.status);
-    const result = await response.json();
-    const raw = (Array.isArray(result) ? result[0] : result)?.base64;
-    if (typeof raw !== "string" || raw.length > 18000000) throw Error("Adapter did not supply base64 output");
-    const bytes = Buffer.from(raw.replace(/^data:image\/\w+;base64,/, ""), "base64");
-    if (!correctSignature(".png", bytes)) throw Error("Adapter must return PNG data");
+    audit(req.user.id, "official_fooocus_started");
+    const generated = await generateUsingOfficialFooocus(prompt);
+    const fileInfo = await stat(generated.path);
+    if (fileInfo.size > 18_000_000) {
+      await unlink(generated.path).catch(() => {});
+      throw Error("Image exceeds the private storage limit");
+    }
     const imageId = newId();
-    const dest = path.join(STORE, imageId + ".png");
-    await writeFile(dest, bytes, { flag: "wx", mode: 0o600 });
-    db.prepare("INSERT INTO images VALUES (?,?,?,?)").run(imageId, req.user.id, dest, now());
-    audit(req.user.id, "image_finished"); res.json({ id: imageId, url: "/api/images/" + imageId });
+    // The automation already copied the result to a random private file.
+    db.prepare("INSERT INTO images VALUES (?,?,?,?)").run(imageId, req.user.id, generated.path, now());
+    audit(req.user.id, "official_fooocus_finished");
+    res.json({ id: imageId, url: "/api/images/" + imageId });
   } catch (e) {
-    audit(req.user.id, "image_failed");
-    res.status(503).json({ error: "Local Fooocus unavailable: " + safeText(String(e.message), 120) });
+    audit(req.user.id, "official_fooocus_failed");
+    res.status(503).json({ error: "Official Fooocus failed: " + safeText(String(e.message), 180) });
   } finally { gpuBusy = false; }
 });
 app.get("/api/images/:id", requireUser, (req, res) => {
   const img = db.prepare("SELECT filepath FROM images WHERE id=? AND user_id=? AND created>?").get(req.params.id, req.user.id, now() - WEEK);
   if (!img || !existsSync(img.filepath)) return res.status(404).end();
-  res.type("png").set("Cache-Control", "private, no-store").sendFile(img.filepath);
+  const ext = path.extname(img.filepath).toLowerCase();
+  res.type(ext === ".webp" ? "webp" : [".jpg", ".jpeg"].includes(ext) ? "jpeg" : "png")
+    .set("Cache-Control", "private, no-store").sendFile(img.filepath);
 });
 app.get("/api/admin/summary", requireUser, requireAdmin, (_req, res) => {
   const num = table => db.prepare("SELECT count(*) as n FROM " + table).get().n;
@@ -248,6 +255,10 @@ app.use((err, _req, res, _next) => {
   console.error("[Junior AI]", err.message);
   res.status(err instanceof multer.MulterError ? 413 : 500).json({ error: err instanceof multer.MulterError ? "File too large (maximum 6 MB)" : "The operation failed" });
 });
-await cleanup();
-setInterval(() => cleanup().catch((e) => console.error("Data cleanup failed:", e.message)), 60 * 60 * 1000).unref();
+async function retentionSweep() {
+  await cleanup();
+  await purgeFooocusResiduals(now() - WEEK);
+}
+await retentionSweep();
+setInterval(() => retentionSweep().catch((e) => console.error("Data cleanup failed:", e.message)), 60 * 60 * 1000).unref();
 app.listen(PORT, "127.0.0.1", () => console.log("Junior AI started on http://127.0.0.1:" + PORT));
