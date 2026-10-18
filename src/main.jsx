@@ -29,7 +29,6 @@ function Auth({ onLogin }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [visible, setVisible] = useState(false);
-  const [otp, setOtp] = useState("");
   const [resetToken, setResetToken] = useState("");
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -43,7 +42,7 @@ function Auth({ onLogin }) {
     e.preventDefault(); setMessage(""); setLoading(true);
     try {
       if (mode === "login") {
-        const data = await post("/auth/login", { email, password, otp }); onLogin(data.user);
+        const data = await post("/auth/login", { email, password }); onLogin(data.user);
       } else if (mode === "register") {
         const data = await post("/auth/register", { email, password }); setMessage(data.message); setMode("login");
       } else if (mode === "forgot") {
@@ -63,7 +62,6 @@ function Auth({ onLogin }) {
       <p className="muted">Your private AI engine, with a thoughtful and encouraging voice.</p>
       {mode !== "confirm-reset" && <label>Email address<input required type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"/></label>}
       {mode !== "forgot" && <label>Password<div className="password-field"><input required minLength={mode === "login" ? undefined : 12} maxLength={128} type={visible ? "text" : "password"} autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={e => setPassword(e.target.value)} placeholder={mode === "login" ? "Your password" : "At least 12 characters"}/><button className="password-eye" type="button" onClick={() => setVisible(!visible)}>{visible ? <EyeOff size={18}/> : <Eye size={18}/>}</button></div></label>}
-      {mode === "login" && <label>Authenticator code (Super Admin only)<input type="text" inputMode="numeric" maxLength={6} autoComplete="one-time-code" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g,""))} placeholder="6 digits for admin login"/></label>}
       {message && <p className="inline-notice">{message}</p>}
       <button className="primary full" disabled={loading} type="submit">{loading ? <Loader2 className="spin" size={17}/> : <ChevronRight size={17}/>}{mode === "login" ? "Sign in" : mode === "register" ? "Create account" : mode === "forgot" ? "Send reset link" : "Save new password"}</button>
       <div className="auth-switch">
