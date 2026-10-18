@@ -3,6 +3,10 @@ import { execFileSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
+// Validate backend syntax as part of every public frontend deployment.
+for (const source of ["server.mjs", "auth.mjs", "fooocus-local.mjs", "policy.mjs"]) {
+  execFileSync(process.execPath, ["--check", source], { stdio: "inherit" });
+}
 execFileSync(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"], { stdio: "inherit", env: process.env });
 
 const api = process.env.JUNIOR_BACKEND_URL?.trim();
