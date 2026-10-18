@@ -9,7 +9,7 @@ Private, local-first AI assistant with a Gemini-inspired but independently desig
 - Local Ollama coding/reasoning chat with installed model selection.
 - Upload and analyze XLSX, CSV, PDF with selectable text, DOCX, source code, TXT, Markdown, JSON and images (image analysis needs a vision-enabled local model).
 - Optional Fooocus image generation through a loopback-only Fooocus-API adapter.
-- Signup with email confirmation, login, logout, password changes, password reset via SMTP, and account deletion.
+- Signup with email confirmation, login, logout, password changes, password reset via SMTP, profile-name editing, account deletion, and mandatory Super Admin TOTP authentication.
 - Super Admin dashboard with account, usage, content **metadata**, audit logs, and content/account deletion. Private message bodies are not shown.
 - Seven-day deletion of conversations, documents, generated images and activity logs. Login/account data remains until account deletion.
 - Minimalist loading animations and operation activity feed.
@@ -21,7 +21,7 @@ Requirements: Node.js 22+, Ollama running locally, model storage, working graphi
 
 1. Clone this repository onto your computer.
 2. Run SETUP-JUNIOR-AI.bat. It installs Node dependencies and creates your local .env.
-3. Run npm run admin in PowerShell. Enter your chosen email and **a new password** at the hidden terminal prompt. Never reuse a password disclosed in a chat or put it into GitHub.
+3. Run npm run admin in PowerShell. Enter your email and **a new password** at the hidden prompt. The setup creates a private TOTP authenticator key. Add it to a local authenticator app and use its six-digit code with every admin login. Keep that key secret. Never reuse a password disclosed in chat or put it into GitHub.
 4. Install a local model using: ollama pull qwen2.5-coder:14b
 5. Run START-JUNIOR-AI.bat, then browse http://127.0.0.1:3001
 6. Check ollama ps during model use to verify GPU acceleration. AMD/Windows compatibility varies with runtimes and drivers.
@@ -57,7 +57,7 @@ Pangolin documentation:
 
 This is not hacker-proof. Conduct independent penetration testing and verify account isolation, HTTPS, proxy trust, CSRF, quota enforcement, safe image/document moderation, credential stuffing, malware scanning, disk exhaustion, rate limiting, logging and GDPR/privacy obligations. Move document parsing into isolated workers with memory/CPU/zip-bomb limits. Add a robust **local** moderation model for prompts, AI responses, image uploads and generated images, plus human review. The current filters are preliminary. Public services operating on a single GPU also need fair scheduling and resource quotas.
 
-Store local files on an encrypted drive. Prevent cloud sync and unexpired backups from defeating seven-day retention. Do not use this code to promise total deletion from external backups. The UI reports that user content is removed after seven days; profile information remains until account deletion. Email-address editing is not yet supported and requires re-verification.
+Store local files on an encrypted drive. Prevent cloud sync and unexpired backups from defeating seven-day retention. Do not use this code to promise total deletion from external backups. The UI reports that user content is removed after seven days; profile information remains until account deletion. Display-name editing is supported. Email-address editing is not yet supported and requires re-verification.
 
 ## Data
 
