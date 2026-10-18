@@ -14,7 +14,8 @@
     "admin": "node scripts/create-admin.mjs",
     "admin:env": "node scripts/create-admin.mjs --from-env",
     "fooocus:setup": "node scripts/setup-fooocus-amd.mjs",
-    "fooocus:start": "node scripts/start-fooocus-amd.mjs"
+    "fooocus:start": "node scripts/start-fooocus-amd.mjs",
+    "build:netlify": "node scripts/netlify-build.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.2.0",
