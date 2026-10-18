@@ -67,6 +67,14 @@ echo Keep this window and the image engine window open while using Junior AI.
 echo Fooocus may take several minutes to start and download models.
 echo Image creation permissions are controlled by Junior AI settings.
 echo.
+echo Junior AI server watchdog is active. If the backend stops unexpectedly, it will restart.
+echo Press Ctrl+C in this window to stop Junior AI.
+echo.
+:restart_backend
 call npm start
-echo Junior AI server stopped.
-pause
+set "BACKEND_EXIT=%errorlevel%"
+echo.
+echo [WARNING] Junior AI backend exited with code %BACKEND_EXIT%.
+echo Waiting 5 seconds before restarting. Keep this window open.
+timeout /t 5 /nobreak >nul
+goto restart_backend
