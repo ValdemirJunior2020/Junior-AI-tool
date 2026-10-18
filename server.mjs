@@ -27,6 +27,7 @@ app.set("trust proxy", "loopback");
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cookieParser());
 app.use(express.json({ limit: "80kb" }));
+app.use("/api", (_req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 180, standardHeaders: "draft-7", legacyHeaders: false }));
 const origins = new Set([PUBLIC_URL, "http://localhost:5173", "http://127.0.0.1:5173"]);
 app.use((req, res, next) => {
@@ -213,7 +214,7 @@ app.get("/api/admin/summary", requireUser, requireAdmin, (_req, res) => {
     content: [
       ...db.prepare("SELECT id,user_id,name,kind,created FROM uploads ORDER BY created DESC LIMIT 100").all().map(x => ({ ...x, type: "upload" })),
       ...db.prepare("SELECT id,user_id,created FROM images ORDER BY created DESC LIMIT 100").all().map(x => ({ ...x, type: "generated_image" })),
-      ...db.prepare("SELECT id,user_id,title,created FROM chats ORDER BY created DESC LIMIT 100").all().map(x => ({ ...x, type: "chat" }))
+      ...db.prepare("SELECT id,user_id,created FROM chats ORDER BY created DESC LIMIT 100").all().map(x => ({ ...x, type: "chat" }))
     ],
     audits: db.prepare("SELECT created,user_id,event,detail FROM audit ORDER BY created DESC LIMIT 100").all()
   });
