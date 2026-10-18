@@ -93,6 +93,7 @@ function App() {
   const [admin, setAdmin] = useState(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [sidebar, setSidebar] = useState(true);
   const [showLogs, setShowLogs] = useState(true);
   const fileInput = useRef(null);
@@ -108,7 +109,7 @@ function App() {
     if (l.status === "fulfilled") setLogs(l.value.logs);
     if (i.status === "fulfilled") setImageEnabled(i.value.enabled);
   }
-  useEffect(() => { if (user) refresh(); }, [user?.id]);
+  useEffect(() => { if (user) { refresh(); setDisplayName(user.display_name || ""); } }, [user?.id]);
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
   useEffect(() => { if (tab === "admin" && user?.role === "admin") refreshAdmin(); }, [tab]);
   const refreshAdmin = async () => { try { setAdmin(await request("/admin/summary")); } catch(e) { setNotice(e.message); } };
@@ -159,6 +160,11 @@ function App() {
   async function removeChat(id) {
     if (!window.confirm("Delete this conversation now?")) return;
     await del("/chats/" + id); if (id === chatId) newChat(); await refresh();
+  }
+  async function saveProfile(e) {
+    e.preventDefault();
+    try { const result = await request("/auth/profile", { method: "PATCH", body: JSON.stringify({ displayName }) }); setUser(old => ({ ...old, display_name: result.display_name })); setNotice("Profile saved locally."); }
+    catch (err) { setNotice(err.message); }
   }
   async function changePassword(e) {
     e.preventDefault();
@@ -249,6 +255,7 @@ function App() {
         <div className="file-list">{files.map(f => <div className="file-row" key={f.id}><div className="file-symbol">{f.kind === "image" ? <ImageIcon/> : <FileText/>}</div><div className="file-info"><b>{f.name}</b><span>Added {date(f.created)} · Automatically removed after 7 days</span></div><button className="secondary" onClick={() => {setChosenFiles(old => old.includes(f.id) ? old : [...old.slice(-3), f.id]);setTab("chat");}}>Use in chat</button><button className="icon-btn" onClick={async () => {await del("/uploads/" + f.id);setFiles(old => old.filter(x => x.id !== f.id));}}><Trash2 size={17}/></button></div>)}{!files.length && <div className="empty">No documents uploaded yet.</div>}</div>
       </section>}
       {tab === "settings" && <section className="page-content narrow"><div className="page-heading"><div className="topic-icon"><UserRound size={27}/></div><h1>Account settings</h1><p>{user.email}</p></div>
+        <div className="panel"><h3>Edit profile</h3><form onSubmit={saveProfile} className="settings-form"><label>Display name<input maxLength={60} required value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your display name"/></label><button className="primary" type="submit"><UserRound size={17}/> Save profile</button></form></div>
         <div className="panel"><h3>Change password</h3><form onSubmit={changePassword} className="settings-form"><label>Current password<input type="password" required value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}/></label><label>New password (12+ characters)<input type="password" required minLength={12} maxLength={128} value={newPassword} onChange={e => setNewPassword(e.target.value)}/></label><button type="submit" className="primary"><KeyRound size={16}/> Change password</button></form></div>
         <div className="panel"><h3>Privacy and retention</h3><p>Your conversations, uploaded files, generated images and related content activity logs are automatically deleted after seven days. You can delete them earlier. Your account remains until you remove it.</p></div>
         <div className="panel danger"><h3>Delete account</h3><p>Immediately remove your account, sessions, conversations and stored files.</p><button className="danger-btn" onClick={deleteAccount}><Trash2 size={17}/> Delete my account</button></div>
