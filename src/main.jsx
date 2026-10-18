@@ -44,7 +44,7 @@ function Auth({ onLogin }) {
       if (mode === "login") {
         const data = await post("/auth/login", { email, password }); onLogin(data.user);
       } else if (mode === "register") {
-        const data = await post("/auth/register", { email, password }); setMessage(data.message); setMode("login");
+        const data = await post("/auth/register", { email, password }); onLogin(data.user);
       } else if (mode === "forgot") {
         const data = await post("/auth/reset/request", { email }); setMessage(data.message);
       } else {
