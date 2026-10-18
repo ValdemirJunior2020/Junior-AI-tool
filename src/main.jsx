@@ -36,7 +36,7 @@ function Auth({ onLogin }) {
     const params = new URLSearchParams(window.location.search);
     const action = params.get("action"), token = params.get("token");
     if (action === "verify" && token) {
-      post("/auth/verify", { token }).then(() => setMessage("Email verified. Sign in to continue.")).catch(e => setMessage(e.message));
+      post("/auth/verify", { token }).then(() => setMessage(t("Email verified. Sign in to continue."))).catch(e => setMessage(e.message));
       history.replaceState(null, "", "/");
     } else if (action === "reset" && token) { setMode("confirm-reset"); setResetToken(token); history.replaceState(null, "", "/"); }
   }, []);
@@ -51,7 +51,7 @@ function Auth({ onLogin }) {
         const data = await post("/auth/reset/request", { email }); setMessage(data.message);
       } else {
         await post("/auth/reset/confirm", { token: resetToken, password });
-        setMessage("Password changed. Sign in again."); setMode("login");
+        setMessage(t("Password changed. Sign in again.")); setMode("login");
       }
     } catch (err) { setMessage(err.message); }
     finally { setLoading(false); }
@@ -72,9 +72,9 @@ function Auth({ onLogin }) {
       <button className="primary full" disabled={loading} type="submit">{loading ? <Loader2 className="spin" size={17}/> : <ChevronRight size={17}/>}{t(mode === "login" ? "Sign in" : mode === "register" ? "Create account" : mode === "forgot" ? "Send reset link" : "Save new password")}</button>
       <div className="auth-switch">
         {mode === "login" ? <button type="button" onClick={() => {setMode("forgot");setMessage("");}}>{t("Forgot your password?")}</button> :
-        <button type="button" onClick={() => {setMode("login");setMessage("");}}>{mode === "register" ? "Already have an account? Sign in" : "Back to sign in"}</button>}
+        <button type="button" onClick={() => {setMode("login");setMessage("");}}>{t(mode === "register" ? "Already have an account? Sign in" : "Back to sign in")}</button>}
       </div>
-      <div className="privacy-note"><ShieldCheck size={15}/> Private computer processing · No paid AI APIs · Content expires after 7 days</div>
+      <div className="privacy-note"><ShieldCheck size={15}/> {t("Private computer processing · No paid AI APIs · Content expires after 7 days")}</div>
     </form>
   </div>;
 }
@@ -321,7 +321,7 @@ function App() {
       <h1>{t("Junior AI is getting ready")}</h1>
       <p className="muted">{t("We're preparing your experience. Thanks for your patience!")}</p>
       <div className="junior-connecting-indicator"><Loader2 className="spin" size={18}/><span>{t("Checking availability automatically...")}</span></div>
-      <button type="button" className="primary full" onClick={() => window.location.reload()}><RefreshCw size={17}/> Try again now</button>
+      <button type="button" className="primary full" onClick={() => window.location.reload()}><RefreshCw size={17}/> {t("Try again now")}</button>
     </div>
   </div>;
 
@@ -333,11 +333,11 @@ function App() {
         <div className="brand"><div className="brandmark"><Sparkles size={19}/></div><span>Junior <b>AI</b></span></div>
         <button className="icon-btn" onClick={() => setSidebar(false)} title="Hide sidebar" aria-label="Close navigation menu"><PanelLeftClose size={19}/></button>
       </div>
-      <button className="new-chat" onClick={newChat}><Plus size={19}/> New conversation</button>
+      <button className="new-chat" onClick={newChat}><Plus size={19}/> {t("New conversation")}</button>
       <div className="nav-stack">
-        <button className={tab === "chat" ? "nav active" : "nav"} onClick={() => goTo("chat")}><MessageSquare size={18}/> Chat & coding</button>
-        <button className={tab === "images" ? "nav active" : "nav"} onClick={() => goTo("images")}><ImageIcon size={18}/> Create images</button>
-        <button className={tab === "files" ? "nav active" : "nav"} onClick={() => goTo("files")}><FileText size={18}/> My documents</button>
+        <button className={tab === "chat" ? "nav active" : "nav"} onClick={() => goTo("chat")}><MessageSquare size={18}/> {t("Chat & coding")}</button>
+        <button className={tab === "images" ? "nav active" : "nav"} onClick={() => goTo("images")}><ImageIcon size={18}/> {t("Create images")}</button>
+        <button className={tab === "files" ? "nav active" : "nav"} onClick={() => goTo("files")}><FileText size={18}/> {t("My documents")}</button>
         <button className={tab === "settings" ? "nav active" : "nav"} onClick={() => goTo("settings")}><Settings size={18}/> Account settings</button>
         {user.role === "admin" && <button className={tab === "admin" ? "nav active" : "nav"} onClick={() => goTo("admin")}><ShieldCheck size={18}/> Super Admin</button>}
       </div>
@@ -350,13 +350,13 @@ function App() {
         </div>)}
       </div>
       <div className="sidebar-bottom">
-        <div className="seven"><ShieldCheck size={17}/> All user content expires in 7 days</div>
+        <div className="seven"><ShieldCheck size={17}/> {t("All user content expires in 7 days")}</div>
         <div className="profile"><span className="avatar">{user.email.slice(0, 1).toUpperCase()}</span><div className="profile-email"><b>{t(user.role === "admin" ? "Super Admin" : "My account")}</b><span>{user.email}</span></div><button className="icon-btn" title="Log out" onClick={logout}><LogOut size={18}/></button></div>
       </div>
     </aside>}
     <main className="main">
       <header className="topbar">
-        <div className="top-left"><button type="button" className="icon-btn menu-open-button" onClick={() => setSidebar(value => !value)} aria-label={sidebar ? "Close menu" : "Open menu"} aria-expanded={sidebar} aria-controls="app-navigation"><PanelLeftOpen size={20}/></button><span className="page-name">{t(tab === "chat" ? "Junior AI" : tab === "images" ? "Image studio" : tab === "files" ? "Knowledge library" : tab === "admin" ? "Super Admin" : "Settings")}</span><span className="local-label"><span className="live-dot"/> Local AI</span></div>
+        <div className="top-left"><button type="button" className="icon-btn menu-open-button" onClick={() => setSidebar(value => !value)} aria-label={sidebar ? "Close menu" : "Open menu"} aria-expanded={sidebar} aria-controls="app-navigation"><PanelLeftOpen size={20}/></button><span className="page-name">{t(tab === "chat" ? "Junior AI" : tab === "images" ? "Image studio" : tab === "files" ? "Knowledge library" : tab === "admin" ? "Super Admin" : "Settings")}</span><span className="local-label"><span className="live-dot"/> {t("Local AI")}</span></div>
         <div className="top-right"><LanguageFlags language={language} setLanguage={setLanguage}/>{tab === "chat" && <span className="model-ready" title={model ? "Junior AI automatically selected a local model" : "Start Ollama to use AI chat"}><span className={model ? "model-ready-dot" : "model-ready-dot offline"}/>{t(model ? "AI ready" : "AI offline")}</span>}<button className={showLogs ? "icon-btn selected-icon" : "icon-btn"} onClick={() => setShowLogs(!showLogs)} title="Toggle activity log"><Activity size={19}/></button></div>
       </header>
       {notice && <div className="notice"><AlertCircle size={17}/>{notice}<button onClick={() => setNotice("")}>×</button></div>}
@@ -386,10 +386,10 @@ function App() {
         </div>
       </div>}
       {tab === "images" && <section className="page-content"><div className="page-heading"><div className="topic-icon purple"><WandSparkles size={27}/></div><h1>{t("Imagine something new")}</h1><p>{t("Describe what you'd like to see, and Junior AI will create an image for you.")}</p></div>
-        {!imageEnabled && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>{t("Image creation is not available for this account yet.")}</strong> Please check back later.</span></div>}
-        {imageEnabled && !imageOnline && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>{t("Our image studio is temporarily unavailable.")}</strong> Please try again in a few minutes. Thanks for your patience!</span></div>}
+        {!imageEnabled && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>{t("Image creation is not available for this account yet.")}</strong> {t("Please check back later.")}</span></div>}
+        {imageEnabled && !imageOnline && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>{t("Our image studio is temporarily unavailable.")}</strong> {t("Please try again in a few minutes. Thanks for your patience!")}</span></div>}
         {imageEnabled && imageOnline && <div className="info-card image-service-status"><CheckCircle2 size={19}/><span>{t("Image studio is ready. What would you like to create?")}</span></div>}
-        {imageEnabled && !imageOnline && <button className="secondary image-retry" type="button" onClick={refresh}><RefreshCw size={15}/> Try again</button>}
+        {imageEnabled && !imageOnline && <button className="secondary image-retry" type="button" onClick={refresh}><RefreshCw size={15}/> {t("Try again")}</button>}
         <form className="image-compose" onSubmit={createImage}>
           <label>{t("Describe the image")}<textarea rows={5} value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder={t("A peaceful, sunlit mountain landscape, cinematic photography...")}/></label>
           <button type="submit" className="primary" disabled={busy || !imagePrompt.trim() || !imageEnabled || !imageOnline}>
@@ -406,17 +406,17 @@ function App() {
         </form>
         <div className="image-grid">{generatedImages.map((url, i) => <div className="image-result" key={i}><img src={url} alt={t("AI-generated image")}/><a href={url} target="_blank" rel="noreferrer">{t("View full image")}</a></div>)}</div>
       </section>}
-      {tab === "files" && <section className="page-content"><div className="page-heading"><div className="topic-icon"><FileText size={27}/></div><h1>{t("Your knowledge, privately stored")}</h1><p>{t("Upload PDFs, DOCX, XLSX, CSV, images and source files. Extracted text can be used in your conversations.")}</p></div><button className="primary" disabled={busy} onClick={() => fileInput.current?.click()}><Plus size={18}/> Add document</button>
+      {tab === "files" && <section className="page-content"><div className="page-heading"><div className="topic-icon"><FileText size={27}/></div><h1>{t("Your knowledge, privately stored")}</h1><p>{t("Upload PDFs, DOCX, XLSX, CSV, images and source files. Extracted text can be used in your conversations.")}</p></div><button className="primary" disabled={busy} onClick={() => fileInput.current?.click()}><Plus size={18}/> {t("Add document")}</button>
         <div className="file-list">{files.map(f => <div className="file-row" key={f.id}><div className="file-symbol">{f.kind === "image" ? <ImageIcon/> : <FileText/>}</div><div className="file-info"><b>{f.name}</b><span>{t("Added")} {date(f.created)} · {t("Automatically removed after 7 days")}</span></div><button className="secondary" onClick={() => {setChosenFiles(old => old.includes(f.id) ? old : [...old.slice(-3), f.id]);setTab("chat");}}>{t("Use in chat")}</button><button className="icon-btn" onClick={async () => {await del("/uploads/" + f.id);setFiles(old => old.filter(x => x.id !== f.id));}}><Trash2 size={17}/></button></div>)}{!files.length && <div className="empty">{t("No documents uploaded yet.")}</div>}</div>
       </section>}
       {tab === "settings" && <section className="page-content narrow"><div className="page-heading"><div className="topic-icon"><UserRound size={27}/></div><h1>{t("Account settings")}</h1><p>{user.email}</p></div>
-        <div className="panel"><h3>{t("Edit profile")}</h3><form onSubmit={saveProfile} className="settings-form"><label>{t("Display name")}<input maxLength={60} required value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder={t("Your display name")}/></label><button className="primary" type="submit"><UserRound size={17}/> Save profile</button></form></div>
+        <div className="panel"><h3>{t("Edit profile")}</h3><form onSubmit={saveProfile} className="settings-form"><label>{t("Display name")}<input maxLength={60} required value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder={t("Your display name")}/></label><button className="primary" type="submit"><UserRound size={17}/> {t("Save profile")}</button></form></div>
         <div className="panel"><h3>{t("Change password")}</h3><form onSubmit={changePassword} className="settings-form"><label>{t("Current password")}<input type="password" required value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}/></label><label>{t("New password (12+ characters)")}<input type="password" required minLength={12} maxLength={128} value={newPassword} onChange={e => setNewPassword(e.target.value)}/></label><button type="submit" className="primary"><KeyRound size={16}/> Change password</button></form></div>
         <div className="panel"><h3>{t("Privacy and retention")}</h3><p>{t("Your conversations, uploaded files, generated images and related content activity logs are automatically deleted after seven days. You can delete them earlier. Your account remains until you remove it.")}</p></div>
-        <div className="panel danger"><h3>{t("Delete account")}</h3><p>{t("Immediately remove your account, sessions, conversations and stored files.")}</p><button className="danger-btn" onClick={deleteAccount}><Trash2 size={17}/> Delete my account</button></div>
+        <div className="panel danger"><h3>{t("Delete account")}</h3><p>{t("Immediately remove your account, sessions, conversations and stored files.")}</p><button className="danger-btn" onClick={deleteAccount}><Trash2 size={17}/> {t("Delete my account")}</button></div>
       </section>}
       {tab === "admin" && user.role === "admin" && <section className="page-content wide"><div className="page-heading"><div className="topic-icon"><ShieldCheck size={27}/></div><h1>Super Admin</h1><p>{t("Account management, usage metadata, system events and content deletion. Private message bodies are not displayed.")}</p></div>
-        <button className="secondary" onClick={refreshAdmin}><RefreshCw size={16}/> Refresh dashboard</button>
+        <button className="secondary" onClick={refreshAdmin}><RefreshCw size={16}/> {t("Refresh dashboard")}</button>
         {admin && <><div className="stats">{Object.entries(admin.totals).map(([k,v]) => <div className="stat" key={k}><strong>{v}</strong><span>{k}</span></div>)}</div><div className="panel"><h3>{t("Accounts")}</h3><div className="admin-table">{admin.accounts.map(u => <div className="admin-row" key={u.id}><span><b>{u.email}</b><small>{u.role} · {t(u.verified ? "verified" : "pending")} · {date(u.created)}</small></span>{u.role !== "admin" && <button className="danger-link" onClick={() => adminDelete(u.id, "user")}>{t("Delete account")}</button>}</div>)}</div></div>
           <div className="panel"><h3>{t("Stored content metadata")}</h3><div className="admin-table">{admin.content.map(x => <div className="admin-row" key={x.type+x.id}><span><b>{x.name || x.title || x.type}</b><small>{x.type} · owner {x.user_id.slice(0, 8)}… · {date(x.created)}</small></span><button className="danger-link" onClick={() => adminDelete(x.id, x.type)}>{t("Delete")}</button></div>)}</div></div>
           <div className="panel"><h3>{t("Security and activity events")}</h3><div className="admin-table">{admin.audits.map((x,i) => <div className="admin-row" key={i}><span><b>{x.event.replaceAll("_", " ")}</b><small>{date(x.created)} {clock(x.created)} · {x.user_id ? x.user_id.slice(0,8)+"…" : "system"} · {x.detail}</small></span></div>)}</div></div></>}
