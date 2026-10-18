@@ -4,10 +4,15 @@ import { stdin as input, stdout as output } from "node:process";
 import { db, newId, now, makePassword, goodPassword } from "../db.mjs";
 import { newTotpSecret } from "../mfa.mjs";
 
-if (!input.isTTY) { console.error("Run this on your own computer in an interactive terminal."); process.exit(1); }
-const rl = readline.createInterface({ input, output });
-const email = (await rl.question("Super Admin email: ")).trim().toLowerCase();
-rl.close();
+const fromEnv = process.argv.includes("--from-env");
+if (!fromEnv && !input.isTTY) { console.error("Run interactively or use --from-env with local .env values."); process.exit(1); }
+async function getAdminEmail() {
+  if (fromEnv) return String(process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+  const rl = readline.createInterface({ input, output });
+  try { return (await rl.question("Super Admin email: ")).trim().toLowerCase(); }
+  finally { rl.close(); }
+}
+const email = await getAdminEmail();
 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { console.error("Invalid email."); process.exit(1); }
 function hiddenPassword() {
   return new Promise(resolve => {
@@ -30,7 +35,8 @@ function hiddenPassword() {
     input.on("data", onData);
   });
 }
-const password = await hiddenPassword();
+const password = fromEnv ? String(process.env.ADMIN_PASSWORD || "") : await hiddenPassword();
+if (fromEnv && !password) { console.error("ADMIN_PASSWORD is missing from local .env."); process.exit(1); }
 if (!goodPassword(password)) { console.error("Password must be 12–128 characters."); process.exit(1); }
 const hash = await makePassword(password);
 const totp = newTotpSecret();
@@ -43,6 +49,8 @@ if (existing) {
   db.prepare("INSERT INTO users(id,email,pass,role,verified,created,totp_secret) VALUES (?,?,?,'admin',1,?,?)").run(newId(), email, hash, now(), totp);
   console.log("Administrator created.");
 }
+console.log("\nLocal bootstrap complete. The password was hashed into SQLite.");
+if (fromEnv) console.log("Remove ADMIN_PASSWORD from .env after setup if you no longer need it there.");
 console.log("\nIMPORTANT: Add this key to an authenticator app on YOUR phone:");
 console.log(totp);
 console.log("\nAuthenticator setup URI (keep private):");
