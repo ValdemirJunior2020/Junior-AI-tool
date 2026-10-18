@@ -49,16 +49,12 @@ router.post("/register", limit, async (req, res, next) => {
   try {
     const mail = normalizeEmail(req.body.email);
     if (!validEmail(mail) || !goodPassword(req.body.password)) return res.status(400).json({ error: "Provide a valid email and a 12–128 character password" });
-    if (!mailConfigured) return res.status(503).json({ error: "Registration will open when the owner configures SMTP verification" });
     if (db.prepare("SELECT id FROM users WHERE email=?").get(mail)) return res.status(409).json({ error: "That email is already registered" });
-    const u = { id: newId(), email: mail };
-    db.prepare("INSERT INTO users(id,email,pass,role,verified,created) VALUES (?,?,?,'user',0,?)").run(u.id, mail, await makePassword(req.body.password), now());
-    try { await tokenEmail(u, "verify"); } catch {
-      db.prepare("DELETE FROM users WHERE id=?").run(u.id);
-      return res.status(503).json({ error: "Verification delivery failed; ask the site owner to check the SMTP server" });
-    }
+    const u = { id: newId(), email: mail, role: "user", display_name: "" };
+    db.prepare("INSERT INTO users(id,email,pass,role,verified,created) VALUES (?,?,?,'user',1,?)").run(u.id, mail, await makePassword(req.body.password), now());
+    session(res, u);
     audit(u.id, "registered");
-    res.status(201).json({ message: "Please verify your email" });
+    res.status(201).json({ message: "Account created successfully", user: u });
   } catch (e) { next(e); }
 });
 router.post("/verify", limit, (req, res) => {
@@ -76,7 +72,7 @@ router.post("/login", limit, async (req, res, next) => {
   try {
     const u = db.prepare("SELECT * FROM users WHERE email=?").get(normalizeEmail(req.body.email));
     if (!u || !await verifyPassword(String(req.body.password || ""), u.pass)) return res.status(401).json({ error: "Invalid login" });
-    if (!u.verified) return res.status(403).json({ error: "Verify your email to continue" });
+    // Email verification is optional for this self-hosted installation.
     session(res, u); audit(u.id, "login"); res.json({ user: { id: u.id, email: u.email, role: u.role, display_name: u.display_name } });
   } catch (e) { next(e); }
 });
