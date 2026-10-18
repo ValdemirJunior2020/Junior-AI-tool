@@ -25,7 +25,7 @@ if (!localOnly(OLLAMA) || !localOnly(FOOOCUS)) throw Error("AI runtimes must bin
 if (process.env.NODE_ENV === "production" && !PUBLIC_URL.startsWith("https://")) throw Error("PUBLIC_URL must use HTTPS in production");
 app.disable("x-powered-by");
 app.set("trust proxy", "loopback");
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({ contentSecurityPolicy: process.env.NODE_ENV === "production" ? { directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'"], imgSrc: ["'self'", "data:"], connectSrc: ["'self'"], objectSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'self'"] } } : false }));
 app.use(cookieParser());
 app.use(express.json({ limit: "80kb" }));
 app.use("/api", (_req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
