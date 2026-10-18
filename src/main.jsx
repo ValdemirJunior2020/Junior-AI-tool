@@ -135,13 +135,14 @@ function App() {
     });
   }, []);
   async function refresh() {
-    const [m, c, f, l, i] = await Promise.allSettled([request("/models"), request("/chats"), request("/uploads"), request("/logs"), request("/images/status")]);
+    const [m, c, f, l, i, g] = await Promise.allSettled([request("/models"), request("/chats"), request("/uploads"), request("/logs"), request("/images/status"), request("/images")]);
     if (m.status === "fulfilled") { const list = m.value.models || []; setModel(old => list.includes(old) ? old : list.find(x => x.includes("coder")) || list[0] || ""); }
     else addLog("model_unavailable", "Start Ollama locally");
     if (c.status === "fulfilled") setChats(c.value.chats);
     if (f.status === "fulfilled") setFiles(f.value.uploads);
     if (l.status === "fulfilled") setLogs(l.value.logs);
     if (i.status === "fulfilled") { setImageEnabled(i.value.enabled); setImageOnline(i.value.online); setImageStatus(i.value.note || ""); }
+    if (g.status === "fulfilled") setGeneratedImages((g.value.images || []).map(image => image.url));
   }
   useEffect(() => { if (user) { refresh(); setDisplayName(user.display_name || ""); } }, [user?.id]);
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
@@ -233,8 +234,10 @@ function App() {
         }
         if (status.status === "failed") throw Error(status.error || "Image generation failed");
         if (status.status === "running") {
-          if (!imageGeneratingSince.current) imageGeneratingSince.current = Date.now();
-          setImageProgress(prev => ({ ...prev, stage: "generating", percent: Math.max(12, prev?.percent || 0), label: "Preparing Fooocus..." }));
+          if (!imageGeneratingSince.current) {
+            imageGeneratingSince.current = Date.now();
+            setImageProgress(prev => ({ ...prev, stage: "generating", percent: Math.max(12, prev?.percent || 0), label: "Preparing Fooocus..." }));
+          }
         } else {
           const position = Math.max(1, Number(status.position) || 1);
           setImageProgress(prev => ({ ...prev, stage: "waiting", percent: 5, label: "You're #" + position + " in line — waiting for your turn..." }));
@@ -293,7 +296,7 @@ function App() {
       <div className="auth-icon"><ShieldCheck size={27}/></div>
       <h1>Junior AI is connecting</h1>
       <p className="muted">The public website is ready, but the secure connection to its local AI computer has not been configured or is temporarily unavailable. No private files or passwords have been uploaded.</p>
-      <div className="info-card"><AlertCircle size={18}/><span>The owner must start Junior AI on the home PC and connect it through the Pangolin gateway. Try again once the connection is ready.</span></div>
+      <div className="info-card"><AlertCircle size={18}/><span>The owner must keep Junior AI running on the Windows PC and maintain the secure HTTPS connection. Try again when the AI computer is online.</span></div>
       <button className="primary full" onClick={() => window.location.reload()}><RefreshCw size={17}/> Recheck secure connection</button>
       <div className="privacy-note"><ShieldCheck size={15}/> This site will not accept account details until its secure server is connected.</div>
     </div>
