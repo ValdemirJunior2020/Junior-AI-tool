@@ -100,8 +100,19 @@ function App() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [sidebar, setSidebar] = useState(true);
+  const [sidebar, setSidebar] = useState(() => !window.matchMedia("(max-width: 760px)").matches);
   const [showLogs, setShowLogs] = useState(true);
+  const [queueStatus, setQueueStatus] = useState(null);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 760px)");
+    const handleResize = event => setSidebar(!event.matches);
+    mq.addEventListener("change", handleResize);
+    return () => mq.removeEventListener("change", handleResize);
+  }, []);
+  function dismissMobileMenu() {
+    if (window.matchMedia("(max-width: 760px)").matches) setSidebar(false);
+  }
+  function goTo(nextTab) { setTab(nextTab); dismissMobileMenu(); }
   const fileInput = useRef(null);
   const bottom = useRef(null);
   const addLog = (event, detail = "") => setLogs(old => [{ created: Date.now(), event, detail }, ...old].slice(0, 60));
@@ -130,10 +141,10 @@ function App() {
   async function openChat(id) {
     try {
       const data = await request("/chats/" + id);
-      setChatId(id); setMessages(data.messages); setTab("chat"); setChosenFiles([]); setNotice("");
+      setChatId(id); setMessages(data.messages); setTab("chat"); setChosenFiles([]); setNotice(""); dismissMobileMenu();
     } catch(e) { setNotice(e.message); }
   }
-  function newChat() { setChatId(""); setMessages([]); setChosenFiles([]); setTab("chat"); setNotice(""); }
+  function newChat() { setChatId(""); setMessages([]); setChosenFiles([]); setTab("chat"); setNotice(""); dismissMobileMenu(); }
   async function upload(e) {
     const picked = e.target.files?.[0]; if (!picked) return;
     if (picked.size > 6 * 1024 * 1024) { setNotice("Maximum file size is 6 MB"); return; }
@@ -148,19 +159,33 @@ function App() {
   }
   async function send(e) {
     e?.preventDefault();
-    if (!text.trim() || busy) return;
+    if (!text.trim() || busy || !model) return;
     const prompt = text.trim();
-    setText(""); setBusy(true); setNotice("");
+    setText(""); setBusy(true); setNotice(""); setQueueStatus("Joining the waiting line...");
     setMessages(old => [...old, { id: "temp-" + Date.now(), role: "user", content: prompt }]);
-    addLog("thinking", "Sending to " + (model || "local model"));
     try {
-      const result = await post("/chat", { prompt, chatId: chatId || null, model, fileIds: chosenFiles });
+      const accepted = await post("/chat", { prompt, chatId: chatId || null, model, fileIds: chosenFiles });
+      if (!accepted.id) throw new Error("Junior AI did not return a queue ticket");
+      // Short status polls also survive ordinary reverse proxies that time out on long requests.
+      let result;
+      for (let attempt = 0; attempt < 400; attempt++) {
+        const status = await request("/chat/jobs/" + encodeURIComponent(accepted.id));
+        if (status.status === "finished") { result = status.result; break; }
+        if (status.status === "failed") throw new Error(status.error || "AI generation failed");
+        setQueueStatus(status.status === "waiting"
+          ? "You're #" + status.position + " in line. Junior AI will answer when it's your turn."
+          : "It's your turn! Junior AI is thinking...");
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      if (!result) throw new Error("The request is taking longer than expected. Please check your conversations before retrying.");
       setMessages(old => [...old, { id: "answer-" + Date.now(), role: "assistant", content: result.answer }]);
       setChatId(result.chatId); setChosenFiles([]);
-      addLog("response_ready", model);
+      addLog("response_ready", "Local AI");
       const data = await request("/chats"); setChats(data.chats);
-    } catch (err) { setNotice(err.message); addLog("operation_failed", err.message); }
-    finally { setBusy(false); }
+    } catch (err) {
+      setMessages(old => [...old, { id: "error-" + Date.now(), role: "assistant", content: "I couldn't finish that request: " + err.message }]);
+      setNotice(err.message); addLog("operation_failed", err.message);
+    } finally { setBusy(false); setQueueStatus(null); }
   }
   async function createImage(e) {
     e.preventDefault(); if (!imagePrompt.trim() || busy) return;
@@ -215,18 +240,19 @@ function App() {
   
   if (!user) return <Auth onLogin={setUser}/>;
   return <div className="shell">
-    {sidebar && <aside className="sidebar">
+    {sidebar && <button className="mobile-menu-backdrop" type="button" aria-label="Close navigation menu" onClick={() => setSidebar(false)}/>}
+    {sidebar && <aside className="sidebar" id="app-navigation" aria-label="Navigation">
       <div className="sidebar-top">
         <div className="brand"><div className="brandmark"><Sparkles size={19}/></div><span>Junior <b>AI</b></span></div>
-        <button className="icon-btn" onClick={() => setSidebar(false)} title="Hide sidebar"><PanelLeftClose size={19}/></button>
+        <button className="icon-btn" onClick={() => setSidebar(false)} title="Hide sidebar" aria-label="Close navigation menu"><PanelLeftClose size={19}/></button>
       </div>
       <button className="new-chat" onClick={newChat}><Plus size={19}/> New conversation</button>
       <div className="nav-stack">
-        <button className={tab === "chat" ? "nav active" : "nav"} onClick={() => setTab("chat")}><MessageSquare size={18}/> Chat & coding</button>
-        <button className={tab === "images" ? "nav active" : "nav"} onClick={() => setTab("images")}><ImageIcon size={18}/> Create images</button>
-        <button className={tab === "files" ? "nav active" : "nav"} onClick={() => setTab("files")}><FileText size={18}/> My documents</button>
-        <button className={tab === "settings" ? "nav active" : "nav"} onClick={() => setTab("settings")}><Settings size={18}/> Account settings</button>
-        {user.role === "admin" && <button className={tab === "admin" ? "nav active" : "nav"} onClick={() => setTab("admin")}><ShieldCheck size={18}/> Super Admin</button>}
+        <button className={tab === "chat" ? "nav active" : "nav"} onClick={() => goTo("chat")}><MessageSquare size={18}/> Chat & coding</button>
+        <button className={tab === "images" ? "nav active" : "nav"} onClick={() => goTo("images")}><ImageIcon size={18}/> Create images</button>
+        <button className={tab === "files" ? "nav active" : "nav"} onClick={() => goTo("files")}><FileText size={18}/> My documents</button>
+        <button className={tab === "settings" ? "nav active" : "nav"} onClick={() => goTo("settings")}><Settings size={18}/> Account settings</button>
+        {user.role === "admin" && <button className={tab === "admin" ? "nav active" : "nav"} onClick={() => goTo("admin")}><ShieldCheck size={18}/> Super Admin</button>}
       </div>
       <div className="section-caption">RECENT CONVERSATIONS</div>
       <div className="history-scroll">
@@ -243,7 +269,7 @@ function App() {
     </aside>}
     <main className="main">
       <header className="topbar">
-        <div className="top-left">{!sidebar && <button className="icon-btn" onClick={() => setSidebar(true)}><PanelLeftOpen size={19}/></button>}<span className="page-name">{tab === "chat" ? "Junior AI" : tab === "images" ? "Image studio" : tab === "files" ? "Knowledge library" : tab === "admin" ? "Super Admin" : "Settings"}</span><span className="local-label"><span className="live-dot"/> Local AI</span></div>
+        <div className="top-left"><button type="button" className="icon-btn menu-open-button" onClick={() => setSidebar(value => !value)} aria-label={sidebar ? "Close menu" : "Open menu"} aria-expanded={sidebar} aria-controls="app-navigation"><PanelLeftOpen size={20}/></button><span className="page-name">{tab === "chat" ? "Junior AI" : tab === "images" ? "Image studio" : tab === "files" ? "Knowledge library" : tab === "admin" ? "Super Admin" : "Settings"}</span><span className="local-label"><span className="live-dot"/> Local AI</span></div>
         <div className="top-right">{tab === "chat" && <span className="model-ready" title={model ? "Junior AI automatically selected a local model" : "Start Ollama to use AI chat"}><span className={model ? "model-ready-dot" : "model-ready-dot offline"}/>{model ? "AI ready" : "AI offline"}</span>}<button className={showLogs ? "icon-btn selected-icon" : "icon-btn"} onClick={() => setShowLogs(!showLogs)} title="Toggle activity log"><Activity size={19}/></button></div>
       </header>
       {notice && <div className="notice"><AlertCircle size={17}/>{notice}<button onClick={() => setNotice("")}>×</button></div>}
@@ -263,7 +289,7 @@ function App() {
               {m.role === "assistant" && <div className="assistant-icon"><Sparkles size={16}/></div>}
               <div className="bubble">{m.role === "assistant" ? <ReactMarkdown>{m.content}</ReactMarkdown> : <p>{m.content}</p>}</div>
             </div>)}
-          {busy && <div className="busy-line"><span className="shimmer-orb"/><span>Junior AI is working<span className="typing-dots">...</span></span></div>}
+          {busy && <div className="busy-line" role="status" aria-live="polite"><span className="shimmer-orb"/><span>{queueStatus || "Junior AI is working..."}</span></div>}
           <div ref={bottom}/>
         </div>
         <div className="composer-wrap">
