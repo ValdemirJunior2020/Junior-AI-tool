@@ -30,14 +30,20 @@ if errorlevel 1 (
   echo Ollama is already running.
 )
 echo.
-echo [2/4] Checking Fooocus AMD...
-if not exist "C:\AI\Fooocus_win64_2-5-0\python_embeded\python.exe" (
-  echo WARNING: Fooocus portable Python not found in expected directory.
-) else (
-  echo Launching Fooocus supervisor in a separate window...
-  echo It will start Fooocus when needed and restart it if the process exits.
-  start "Junior AI - Fooocus AMD" /D "%~dp0" powershell.exe -NoProfile -ExecutionPolicy Bypass -NoExit -File "%~dp0scripts\watch-fooocus.ps1"
+echo [2/4] Starting image engine supervisor...
+if not exist "scripts\watch-fooocus.ps1" (
+  echo ERROR: Image engine supervisor is missing. Run git pull origin main.
+  pause
+  exit /b 1
 )
+if not defined FOOOCUS_DIR set "FOOOCUS_DIR=C:\AI\Fooocus_win64_2-5-0"
+if not exist "%FOOOCUS_DIR%\python_embeded\python.exe" (
+  echo WARNING: Image engine files are not found at "%FOOOCUS_DIR%".
+  echo Check FOOOCUS_DIR in the local .env configuration.
+)
+echo Launching image engine monitor...
+start "Junior AI - Image Engine" /D "%~dp0" cmd.exe /k "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ""%~dp0scripts\watch-fooocus.ps1"""
+echo Startup logs appear in the Junior AI - Image Engine window.
 echo.
 echo [3/4] Building Junior AI frontend...
 call npm run build
@@ -51,9 +57,9 @@ echo [4/4] Starting Junior AI...
 set "ENABLE_FOOOCUS=true"
 start "" "http://127.0.0.1:3001"
 echo.
-echo Keep this window open while using Junior AI.\necho Keep the Fooocus supervisor window open too; it will restart Fooocus if needed.
+echo Keep this window and the image engine window open while using Junior AI.
 echo Fooocus may take several minutes to start and download models.
-echo Image generation remains restricted to administrator accounts locally.
+echo Image creation permissions are controlled by Junior AI settings.
 echo.
 call npm start
 echo Junior AI server stopped.
