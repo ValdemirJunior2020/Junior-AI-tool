@@ -362,15 +362,16 @@ function App() {
           <div className="footer-note">Junior AI is locally powered. It can make mistakes; verify important output.</div>
         </div>
       </div>}
-      {tab === "images" && <section className="page-content"><div className="page-heading"><div className="topic-icon purple"><WandSparkles size={27}/></div><h1>Imagine something new</h1><p>Create images privately with the official Fooocus app and AMD DirectML, running on your own GPU.</p></div>
-        {!imageEnabled && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>Image generation is currently disabled.</strong> {user.role === "admin" ? "Install and start Fooocus AMD, set ENABLE_FOOOCUS=true in your local .env file, then restart Junior AI. The Generate button unlocks after Fooocus is running." : "The owner has not enabled image generation for this account."}</span></div>}
-        {imageEnabled && !imageOnline && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>Fooocus is enabled but offline.</strong> Start it using npm run fooocus:start on your AI computer, then select Recheck. The Generate button unlocks when the local Fooocus service responds.</span></div>}
-        <div className="info-card image-service-status"><Activity size={19}/><span>{imageStatus || "Checking official Fooocus on your PC..."}</span><button className="secondary" type="button" onClick={refresh}><RefreshCw size={15}/> Recheck</button></div>
+      {tab === "images" && <section className="page-content"><div className="page-heading"><div className="topic-icon purple"><WandSparkles size={27}/></div><h1>Imagine something new</h1><p>Describe what you'd like to see, and Junior AI will create an image for you.</p></div>
+        {!imageEnabled && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>Image creation is not available for this account yet.</strong> Please check back later.</span></div>}
+        {imageEnabled && !imageOnline && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>Our image studio is temporarily unavailable.</strong> Please try again in a few minutes. Thanks for your patience!</span></div>}
+        {imageEnabled && imageOnline && <div className="info-card image-service-status"><CheckCircle2 size={19}/><span>Image studio is ready. What would you like to create?</span></div>}
+        {imageEnabled && !imageOnline && <button className="secondary image-retry" type="button" onClick={refresh}><RefreshCw size={15}/> Try again</button>}
         <form className="image-compose" onSubmit={createImage}>
           <label>Describe the image<textarea rows={5} value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder="A peaceful, sunlit mountain landscape, cinematic photography..."/></label>
           <button type="submit" className="primary" disabled={busy || !imagePrompt.trim() || !imageEnabled || !imageOnline}>
             {busy ? <Loader2 className="spin" size={18}/> : <Sparkles size={18}/>}
-            {busy ? "Generating..." : "Generate locally"}
+            {busy ? "Creating your image..." : "Create image"}
           </button>
           {imageProgress && <div className={"image-progress-card " + (imageProgress.stage === "failed" ? "image-progress-failed" : imageProgress.stage === "ready" ? "image-progress-ready" : "")} role="status" aria-live="polite">
             <div className="image-progress-header"><span className="image-progress-label">{imageProgress.label}</span><strong className="image-progress-percent">{Math.round(imageProgress.percent)}%</strong></div>
