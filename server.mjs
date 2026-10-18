@@ -70,17 +70,40 @@ app.delete("/api/chats/:id", requireUser, (req, res) => {
   audit(req.user.id, "chat_deleted"); res.json({ ok: true });
 });
 app.get("/api/logs", requireUser, (req, res) => res.json({ logs: db.prepare("SELECT created,event,detail FROM audit WHERE user_id=? ORDER BY created DESC LIMIT 70").all(req.user.id) }));
-app.post("/api/chat", requireUser, workLimiter, async (req, res) => {
-  const prompt = safeText(req.body.prompt, 16000);
-  const model = safeText(req.body.model, 120);
-  const cid = safeText(req.body.chatId, 64);
-  if (!prompt || !/^[\w./:-]{1,120}$/.test(model)) return res.status(400).json({ error: "Choose a local model and enter a prompt" });
-  if (isBlocked(prompt)) { audit(req.user.id, "blocked_request"); return res.status(422).json({ error: "This request does not meet Junior AI family-safe rules" }); }
-  if (gpuBusy) return res.status(429).json({ error: "The GPU is working on another request; retry shortly" });
-  let chat = cid ? db.prepare("SELECT id,title FROM chats WHERE id=? AND user_id=?").get(cid, req.user.id) : null;
-  if (cid && !chat) return res.status(404).json({ error: "Chat not found" });
-  const fileIds = Array.isArray(req.body.fileIds) ? req.body.fileIds.slice(0, 4) : [];
+
+const MAX_WAITING = 12;
+const JOB_TTL_MS = 20 * 60 * 1000;
+const chatJobs = new Map();
+const waiting = [];
+let runningChat = null;
+function publicJob(job) {
+  const position = job.state === "waiting" ? waiting.indexOf(job) + 1 : 0;
+  return { id: job.id, status: job.state, position, waiting: waiting.length,
+    ...(job.state === "finished" ? { result: job.result } : {}),
+    ...(job.state === "failed" ? { error: job.error } : {}) };
+}
+function nextChatJob() {
+  if (runningChat || gpuBusy || !waiting.length) return;
+  const job = waiting.shift();
+  runningChat = job;
   gpuBusy = true;
+  job.state = "running";
+  void processChatJob(job).catch(error => {
+    job.state = "failed";
+    job.error = "Junior AI could not finish this request: " + safeText(error.message || String(error), 160);
+  }).finally(() => {
+    if (job.state === "running") job.state = "finished";
+    job.completedAt = now();
+    gpuBusy = false;
+    runningChat = null;
+    setImmediate(nextChatJob);
+  });
+}
+async function processChatJob(job) {
+  const { prompt, model, chatId: cid, fileIds, userId } = job;
+  const req = { user: { id: userId } };
+  let chat = cid ? db.prepare("SELECT id,title FROM chats WHERE id=? AND user_id=?").get(cid, userId) : null;
+  if (cid && !chat) throw new Error("Chat not found");
   try {
     if (!chat) {
       chat = { id: newId(), title: prompt.slice(0, 60) };
@@ -119,14 +142,37 @@ app.post("/api/chat", requireUser, workLimiter, async (req, res) => {
       db.prepare("INSERT INTO messages VALUES (?,?,?,?,?,?)").run(newId(), chat.id, req.user.id, "assistant", answer, now());
     })();
     audit(req.user.id, "ai_finished", model);
-    res.json({ chatId: chat.id, answer });
+    job.result = { chatId: chat.id, answer };
   } catch (e) {
     audit(req.user.id, "ai_failed");
-    res.status(503).json({ error: "Local model failed: " + safeText(String(e.message), 130) });
-  } finally {
-    gpuBusy = false;
+    throw e;
   }
+}
+app.post("/api/chat", requireUser, workLimiter, (req, res) => {
+  const prompt = safeText(req.body.prompt, 16000);
+  const model = safeText(req.body.model, 120);
+  const cid = safeText(req.body.chatId, 64);
+  if (!prompt || !/^[\\w./:-]{1,120}$/.test(model)) return res.status(400).json({ error: "AI model unavailable or prompt empty" });
+  if (isBlocked(prompt)) return res.status(422).json({ error: "This request does not meet Junior AI family-safe rules" });
+  if (cid && !db.prepare("SELECT 1 FROM chats WHERE id=? AND user_id=?").get(cid, req.user.id)) return res.status(404).json({ error: "Chat not found" });
+  if ([...chatJobs.values()].some(j => j.userId === req.user.id && ["waiting","running"].includes(j.state))) return res.status(409).json({ error: "You already have a request in line. Please wait for it to finish." });
+  if (waiting.length >= MAX_WAITING) return res.status(429).json({ error: "The waiting line is full. Please try again shortly." });
+  const job = { id: newId(), userId: req.user.id, prompt, model, chatId: cid, fileIds: Array.isArray(req.body.fileIds) ? req.body.fileIds.slice(0,4) : [], state: "waiting", createdAt: now() };
+  chatJobs.set(job.id, job);
+  waiting.push(job);
+  res.status(202).json(publicJob(job));
+  setImmediate(nextChatJob);
 });
+app.get("/api/chat/jobs/:id", requireUser, (req, res) => {
+  const job = chatJobs.get(req.params.id);
+  if (!job || job.userId !== req.user.id) return res.status(404).json({ error: "Request not found" });
+  res.json(publicJob(job));
+});
+setInterval(() => {
+  for (const [id, job] of chatJobs) {
+    if ((job.state === "finished" || job.state === "failed") && now() - job.completedAt > JOB_TTL_MS) chatJobs.delete(id);
+  }
+}, 60000).unref();
 
 const supported = new Set([".txt", ".md", ".json", ".csv", ".js", ".jsx", ".ts", ".tsx", ".py", ".html", ".css", ".pdf", ".docx", ".xlsx", ".png", ".jpg", ".jpeg", ".webp"]);
 const multerUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 6 * 1024 * 1024, files: 1 } });
@@ -208,7 +254,7 @@ app.post("/api/images/generate", requireUser, workLimiter, async (req, res) => {
   } catch (e) {
     audit(req.user.id, "official_fooocus_failed");
     res.status(503).json({ error: "Official Fooocus failed: " + safeText(String(e.message), 180) });
-  } finally { gpuBusy = false; }
+  } finally { gpuBusy = false; setImmediate(nextChatJob); }
 });
 app.get("/api/images/:id", requireUser, (req, res) => {
   const img = db.prepare("SELECT filepath FROM images WHERE id=? AND user_id=? AND created>?").get(req.params.id, req.user.id, now() - WEEK);
