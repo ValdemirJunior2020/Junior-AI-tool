@@ -53,8 +53,14 @@ if errorlevel 1 (
   exit /b 1
 )
 echo.
-echo [4/4] Starting Junior AI...
+echo [4/4] Starting Junior AI and public connection...
 set "ENABLE_FOOOCUS=true"
+if exist "scripts\watch-public-connection.ps1" (
+  echo Launching secure public connection monitor...
+  start "Junior AI - Public Connection" /D "%~dp0" powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\watch-public-connection.ps1"
+) else (
+  echo WARNING: Public connection monitor was not found.
+)
 start "" "http://127.0.0.1:3001"
 echo.
 echo Keep this window and the image engine window open while using Junior AI.
