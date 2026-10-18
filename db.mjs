@@ -24,6 +24,8 @@ db.exec([
 ].join(";") + ";");
 if (!db.pragma("table_info(users)").some(col => col.name === "display_name")) db.exec("ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''");
 if (!db.pragma("table_info(users)").some(col => col.name === "totp_secret")) db.exec("ALTER TABLE users ADD COLUMN totp_secret TEXT NOT NULL DEFAULT ''");
+// Existing authenticator secrets are no longer used; clear them from local records.
+db.prepare("UPDATE users SET totp_secret='' WHERE totp_secret<>''").run();
 export const now = () => Date.now();
 export const newId = () => randomBytes(16).toString("hex");
 export const digest = (v) => createHash("sha256").update(v).digest("hex");
