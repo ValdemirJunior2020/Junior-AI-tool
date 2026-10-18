@@ -14,3 +14,8 @@
 .image-service-status{align-items:center;flex-wrap:wrap}
 .image-service-status>span{flex:1;min-width:200px}
 @media(max-width:450px){.auth-card{padding:24px}.auth-tabs button{font-size:14px}}
+
+/* Read-only AI readiness indicator: model selection is automatic. */
+.model-ready{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid #d9e9de;border-radius:999px;background:#f4faf6;color:#386b4a;font-size:12px;font-weight:700;white-space:nowrap}
+.model-ready-dot{width:8px;height:8px;border-radius:50%;background:#55b980;box-shadow:0 0 0 3px #d9f2e3}
+.model-ready-dot.offline{background:#b7a7a7;box-shadow:none}
