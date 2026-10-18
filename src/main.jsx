@@ -14,7 +14,7 @@ async function request(route, opts = {}) {
     headers: { ...(opts.body instanceof FormData ? {} : { "Content-Type": "application/json" }), ...(opts.headers || {}) }
   });
   const json = await response.json().catch(() => ({}));
-  if (!response.ok) throw Error(json.error || "Request failed");
+  if (!response.ok) throw Error([502, 503, 504].includes(response.status) ? "Junior AI is getting ready. Please try again soon." : (json.error || "Request failed"));
   return json;
 }
 const post = (route, data) => request(route, { method: "POST", body: JSON.stringify(data) });
