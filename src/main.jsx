@@ -8,6 +8,7 @@ import {
   ChevronRight, Github, WandSparkles, PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 import "./style.css";
+import { useJuniorLanguage, LanguageFlags } from "./i18n.jsx";
 
 async function request(route, opts = {}) {
   const response = await fetch("/api" + route, { credentials: "include", ...opts,
@@ -23,6 +24,7 @@ const clock = n => new Date(n).toLocaleTimeString([], { hour: "2-digit", minute:
 const date = n => new Date(n).toLocaleDateString();
 
 function Auth({ onLogin }) {
+  const { language, setLanguage, t } = useJuniorLanguage();
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -55,21 +57,21 @@ function Auth({ onLogin }) {
     finally { setLoading(false); }
   }
   return <div className="auth-page">
-    <div className="brand auth-brand"><div className="brandmark"><Sparkles size={22}/></div><span>Junior <b>AI</b></span></div>
+    <div className="auth-header"><div className="brand auth-brand"><div className="brandmark"><Sparkles size={22}/></div><span>Junior <b>AI</b></span></div><LanguageFlags language={language} setLanguage={setLanguage}/></div>
     <form className="auth-card" onSubmit={submit}>
       {(mode === "login" || mode === "register") && <div className="auth-tabs" role="group" aria-label="Account access">
-        <button type="button" className={mode === "login" ? "active" : ""} aria-pressed={mode === "login"} onClick={() => { setMode("login"); setMessage(""); }}>Sign in</button>
-        <button type="button" className={mode === "register" ? "active" : ""} aria-pressed={mode === "register"} onClick={() => { setMode("register"); setMessage(""); }}>Create account</button>
+        <button type="button" className={mode === "login" ? "active" : ""} aria-pressed={mode === "login"} onClick={() => { setMode("login"); setMessage(""); }}>{t("Sign in")}</button>
+        <button type="button" className={mode === "register" ? "active" : ""} aria-pressed={mode === "register"} onClick={() => { setMode("register"); setMessage(""); }}>{t("Create account")}</button>
       </div>}
       <div className="auth-icon"><Sparkles size={27}/></div>
-      <h1>{mode === "register" ? "Create your account" : mode === "forgot" ? "Reset your password" : mode === "confirm-reset" ? "Choose a new password" : "Welcome to Junior AI"}</h1>
-      <p className="muted">Your private AI engine, with a thoughtful and encouraging voice.</p>
-      {mode !== "confirm-reset" && <label>Email address<input required type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"/></label>}
-      {mode !== "forgot" && <label>Password<div className="password-field"><input required minLength={mode === "login" ? undefined : 12} maxLength={128} type={visible ? "text" : "password"} autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={e => setPassword(e.target.value)} placeholder={mode === "login" ? "Your password" : "At least 12 characters"}/><button className="password-eye" type="button" onClick={() => setVisible(!visible)}>{visible ? <EyeOff size={18}/> : <Eye size={18}/>}</button></div></label>}
+      <h1>{t(mode === "register" ? "Create your account" : mode === "forgot" ? "Reset your password" : mode === "confirm-reset" ? "Choose a new password" : "Welcome to Junior AI")}</h1>
+      <p className="muted">{t("Your private AI engine, with a thoughtful and encouraging voice.")}</p>
+      {mode !== "confirm-reset" && <label>{t("Email address")}<input required type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"/></label>}
+      {mode !== "forgot" && <label>{t("Password")}<div className="password-field"><input required minLength={mode === "login" ? undefined : 12} maxLength={128} type={visible ? "text" : "password"} autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={e => setPassword(e.target.value)} placeholder={t(mode === "login" ? "Your password" : "At least 12 characters")}/><button className="password-eye" type="button" onClick={() => setVisible(!visible)}>{visible ? <EyeOff size={18}/> : <Eye size={18}/>}</button></div></label>}
       {message && <p className="inline-notice">{message}</p>}
-      <button className="primary full" disabled={loading} type="submit">{loading ? <Loader2 className="spin" size={17}/> : <ChevronRight size={17}/>}{mode === "login" ? "Sign in" : mode === "register" ? "Create account" : mode === "forgot" ? "Send reset link" : "Save new password"}</button>
+      <button className="primary full" disabled={loading} type="submit">{loading ? <Loader2 className="spin" size={17}/> : <ChevronRight size={17}/>}{t(mode === "login" ? "Sign in" : mode === "register" ? "Create account" : mode === "forgot" ? "Send reset link" : "Save new password")}</button>
       <div className="auth-switch">
-        {mode === "login" ? <button type="button" onClick={() => {setMode("forgot");setMessage("");}}>Forgot your password?</button> :
+        {mode === "login" ? <button type="button" onClick={() => {setMode("forgot");setMessage("");}}>{t("Forgot your password?")}</button> :
         <button type="button" onClick={() => {setMode("login");setMessage("");}}>{mode === "register" ? "Already have an account? Sign in" : "Back to sign in"}</button>}
       </div>
       <div className="privacy-note"><ShieldCheck size={15}/> Private computer processing · No paid AI APIs · Content expires after 7 days</div>
@@ -78,6 +80,7 @@ function Auth({ onLogin }) {
 }
 
 function App() {
+  const { language, setLanguage, t } = useJuniorLanguage();
   const [user, setUser] = useState(undefined);
   const [backendOffline, setBackendOffline] = useState(false);
   const [model, setModel] = useState("");
@@ -195,7 +198,7 @@ function App() {
     setText(""); setBusy(true); setNotice(""); setQueueStatus("Joining the waiting line...");
     setMessages(old => [...old, { id: "temp-" + Date.now(), role: "user", content: prompt }]);
     try {
-      const accepted = await post("/chat", { prompt, chatId: chatId || null, model, fileIds: chosenFiles });
+      const accepted = await post("/chat", { prompt, chatId: chatId || null, model, fileIds: chosenFiles, locale: language });
       if (!accepted.id) throw new Error("Junior AI did not return a queue ticket");
       // Short status polls also survive ordinary reverse proxies that time out on long requests.
       let result;
@@ -315,9 +318,9 @@ function App() {
     <div className="brand auth-brand"><div className="brandmark"><Sparkles size={22}/></div><span>Junior <b>AI</b></span></div>
     <div className="auth-card junior-connecting-card" role="status" aria-live="polite">
       <div className="junior-connecting-icon"><Sparkles size={30}/></div>
-      <h1>Junior AI is getting ready</h1>
-      <p className="muted">We're preparing your experience. Thanks for your patience!</p>
-      <div className="junior-connecting-indicator"><Loader2 className="spin" size={18}/><span>Checking availability automatically...</span></div>
+      <h1>{t("Junior AI is getting ready")}</h1>
+      <p className="muted">{t("We're preparing your experience. Thanks for your patience!")}</p>
+      <div className="junior-connecting-indicator"><Loader2 className="spin" size={18}/><span>{t("Checking availability automatically...")}</span></div>
       <button type="button" className="primary full" onClick={() => window.location.reload()}><RefreshCw size={17}/> Try again now</button>
     </div>
   </div>;
@@ -338,9 +341,9 @@ function App() {
         <button className={tab === "settings" ? "nav active" : "nav"} onClick={() => goTo("settings")}><Settings size={18}/> Account settings</button>
         {user.role === "admin" && <button className={tab === "admin" ? "nav active" : "nav"} onClick={() => goTo("admin")}><ShieldCheck size={18}/> Super Admin</button>}
       </div>
-      <div className="section-caption">RECENT CONVERSATIONS</div>
+      <div className="section-caption">{t("RECENT CONVERSATIONS")}</div>
       <div className="history-scroll">
-        {chats.length === 0 && <p className="muted small pad">Your conversations will appear here.</p>}
+        {chats.length === 0 && <p className="muted small pad">{t("Your conversations will appear here.")}</p>}
         {chats.map(c => <div key={c.id} className={chatId === c.id ? "history-item selected" : "history-item"}>
           <button onClick={() => openChat(c.id)} title={c.title}><MessageSquare size={15}/><span>{c.title}</span></button>
           <button className="remove-history" onClick={() => removeChat(c.id)} title="Delete"><Trash2 size={14}/></button>
@@ -348,81 +351,81 @@ function App() {
       </div>
       <div className="sidebar-bottom">
         <div className="seven"><ShieldCheck size={17}/> All user content expires in 7 days</div>
-        <div className="profile"><span className="avatar">{user.email.slice(0, 1).toUpperCase()}</span><div className="profile-email"><b>{user.role === "admin" ? "Super Admin" : "My account"}</b><span>{user.email}</span></div><button className="icon-btn" title="Log out" onClick={logout}><LogOut size={18}/></button></div>
+        <div className="profile"><span className="avatar">{user.email.slice(0, 1).toUpperCase()}</span><div className="profile-email"><b>{t(user.role === "admin" ? "Super Admin" : "My account")}</b><span>{user.email}</span></div><button className="icon-btn" title="Log out" onClick={logout}><LogOut size={18}/></button></div>
       </div>
     </aside>}
     <main className="main">
       <header className="topbar">
-        <div className="top-left"><button type="button" className="icon-btn menu-open-button" onClick={() => setSidebar(value => !value)} aria-label={sidebar ? "Close menu" : "Open menu"} aria-expanded={sidebar} aria-controls="app-navigation"><PanelLeftOpen size={20}/></button><span className="page-name">{tab === "chat" ? "Junior AI" : tab === "images" ? "Image studio" : tab === "files" ? "Knowledge library" : tab === "admin" ? "Super Admin" : "Settings"}</span><span className="local-label"><span className="live-dot"/> Local AI</span></div>
-        <div className="top-right">{tab === "chat" && <span className="model-ready" title={model ? "Junior AI automatically selected a local model" : "Start Ollama to use AI chat"}><span className={model ? "model-ready-dot" : "model-ready-dot offline"}/>{model ? "AI ready" : "AI offline"}</span>}<button className={showLogs ? "icon-btn selected-icon" : "icon-btn"} onClick={() => setShowLogs(!showLogs)} title="Toggle activity log"><Activity size={19}/></button></div>
+        <div className="top-left"><button type="button" className="icon-btn menu-open-button" onClick={() => setSidebar(value => !value)} aria-label={sidebar ? "Close menu" : "Open menu"} aria-expanded={sidebar} aria-controls="app-navigation"><PanelLeftOpen size={20}/></button><span className="page-name">{t(tab === "chat" ? "Junior AI" : tab === "images" ? "Image studio" : tab === "files" ? "Knowledge library" : tab === "admin" ? "Super Admin" : "Settings")}</span><span className="local-label"><span className="live-dot"/> Local AI</span></div>
+        <div className="top-right"><LanguageFlags language={language} setLanguage={setLanguage}/>{tab === "chat" && <span className="model-ready" title={model ? "Junior AI automatically selected a local model" : "Start Ollama to use AI chat"}><span className={model ? "model-ready-dot" : "model-ready-dot offline"}/>{t(model ? "AI ready" : "AI offline")}</span>}<button className={showLogs ? "icon-btn selected-icon" : "icon-btn"} onClick={() => setShowLogs(!showLogs)} title="Toggle activity log"><Activity size={19}/></button></div>
       </header>
       {notice && <div className="notice"><AlertCircle size={17}/>{notice}<button onClick={() => setNotice("")}>×</button></div>}
       {tab === "chat" && <div className="chat-stage">
         <div className="messages">
           {messages.length === 0 ? <div className="welcome">
             <div className="hello-star"><Sparkles size={40}/></div>
-            <h1><span>Hello there.</span><br/>How can I help you today?</h1>
+            <h1><span>{t("Hello there.")}</span><br/>{t("How can I help you today?")}</h1>
             
             <div className="prompts">
-              <button onClick={() => setText("Review this React code and suggest fixes with tests.")}><Code2 size={21}/><span>Review my code</span></button>
-              <button onClick={() => {setText("Analyze the uploaded Excel workbook: totals, outliers and trends.");fileInput.current?.click();}}><FileSpreadsheet size={21}/><span>Analyze Excel</span></button>
-              <button onClick={() => {setText("Summarize this document and identify the most important facts.");fileInput.current?.click();}}><FileText size={21}/><span>Read deep documents</span></button>
-              <button onClick={() => {setTab("images");}}><WandSparkles size={21}/><span>Create an image</span></button>
+              <button onClick={() => setText("Review this React code and suggest fixes with tests.")}><Code2 size={21}/><span>{t("Review my code")}</span></button>
+              <button onClick={() => {setText("Analyze the uploaded Excel workbook: totals, outliers and trends.");fileInput.current?.click();}}><FileSpreadsheet size={21}/><span>{t("Analyze Excel")}</span></button>
+              <button onClick={() => {setText("Summarize this document and identify the most important facts.");fileInput.current?.click();}}><FileText size={21}/><span>{t("Read deep documents")}</span></button>
+              <button onClick={() => {setTab("images");}}><WandSparkles size={21}/><span>{t("Create an image")}</span></button>
             </div>
           </div> : messages.map((m, i) => <div className={"bubble-row " + m.role} key={m.id || i}>
               {m.role === "assistant" && <div className="assistant-icon"><Sparkles size={16}/></div>}
               <div className="bubble">{m.role === "assistant" ? <ReactMarkdown>{m.content}</ReactMarkdown> : <p>{m.content}</p>}</div>
             </div>)}
-          {busy && <div className="busy-line" role="status" aria-live="polite"><span className="shimmer-orb"/><span>{queueStatus || "Junior AI is working..."}</span></div>}
+          {busy && <div className="busy-line" role="status" aria-live="polite"><span className="shimmer-orb"/><span>{queueStatus ? t(queueStatus) : t("Junior AI is working...")}</span></div>}
           <div ref={bottom}/>
         </div>
         <div className="composer-wrap">
           {!!chosenFiles.length && <div className="attachments">{chosenFiles.map(fid => {const f = files.find(x => x.id === fid);return f ? <button key={fid} onClick={() => setChosenFiles(old => old.filter(x => x !== fid))}><Paperclip size={14}/>{f.name} ×</button> : null;})}</div>}
-          <form className="composer" onSubmit={send}><textarea rows={2} placeholder="Ask Junior AI anything..." value={text} onChange={e => setText(e.target.value)} onKeyDown={e => {if(e.key === "Enter" && !e.shiftKey){e.preventDefault();send();}}}/><div className="composer-bottom"><div className="composer-tools"><button type="button" title="Attach PDF, Excel, image or code" onClick={() => fileInput.current?.click()}><Paperclip size={19}/><span>Add files</span></button></div><button className="send" type="submit" disabled={busy || !text.trim() || !model}>{busy ? <Loader2 className="spin" size={19}/> : <Send size={18}/>}</button></div></form>
-          <div className="footer-note">Junior AI is locally powered. It can make mistakes; verify important output.</div>
+          <form className="composer" onSubmit={send}><textarea rows={2} placeholder={t("Ask Junior AI anything...")} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => {if(e.key === "Enter" && !e.shiftKey){e.preventDefault();send();}}}/><div className="composer-bottom"><div className="composer-tools"><button type="button" title={t("Attach PDF, Excel, image or code")} onClick={() => fileInput.current?.click()}><Paperclip size={19}/><span>{t("Add files")}</span></button></div><button className="send" type="submit" disabled={busy || !text.trim() || !model}>{busy ? <Loader2 className="spin" size={19}/> : <Send size={18}/>}</button></div></form>
+          <div className="footer-note">{t("Junior AI is locally powered. It can make mistakes; verify important output.")}</div>
         </div>
       </div>}
-      {tab === "images" && <section className="page-content"><div className="page-heading"><div className="topic-icon purple"><WandSparkles size={27}/></div><h1>Imagine something new</h1><p>Describe what you'd like to see, and Junior AI will create an image for you.</p></div>
-        {!imageEnabled && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>Image creation is not available for this account yet.</strong> Please check back later.</span></div>}
-        {imageEnabled && !imageOnline && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>Our image studio is temporarily unavailable.</strong> Please try again in a few minutes. Thanks for your patience!</span></div>}
-        {imageEnabled && imageOnline && <div className="info-card image-service-status"><CheckCircle2 size={19}/><span>Image studio is ready. What would you like to create?</span></div>}
+      {tab === "images" && <section className="page-content"><div className="page-heading"><div className="topic-icon purple"><WandSparkles size={27}/></div><h1>{t("Imagine something new")}</h1><p>{t("Describe what you'd like to see, and Junior AI will create an image for you.")}</p></div>
+        {!imageEnabled && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>{t("Image creation is not available for this account yet.")}</strong> Please check back later.</span></div>}
+        {imageEnabled && !imageOnline && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>{t("Our image studio is temporarily unavailable.")}</strong> Please try again in a few minutes. Thanks for your patience!</span></div>}
+        {imageEnabled && imageOnline && <div className="info-card image-service-status"><CheckCircle2 size={19}/><span>{t("Image studio is ready. What would you like to create?")}</span></div>}
         {imageEnabled && !imageOnline && <button className="secondary image-retry" type="button" onClick={refresh}><RefreshCw size={15}/> Try again</button>}
         <form className="image-compose" onSubmit={createImage}>
-          <label>Describe the image<textarea rows={5} value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder="A peaceful, sunlit mountain landscape, cinematic photography..."/></label>
+          <label>{t("Describe the image")}<textarea rows={5} value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder={t("A peaceful, sunlit mountain landscape, cinematic photography...")}/></label>
           <button type="submit" className="primary" disabled={busy || !imagePrompt.trim() || !imageEnabled || !imageOnline}>
             {busy ? <Loader2 className="spin" size={18}/> : <Sparkles size={18}/>}
-            {busy ? "Creating your image..." : "Create image"}
+            {t(busy ? "Creating your image..." : "Create image")}
           </button>
           {imageProgress && <div className={"image-progress-card " + (imageProgress.stage === "failed" ? "image-progress-failed" : imageProgress.stage === "ready" ? "image-progress-ready" : "")} role="status" aria-live="polite">
-            <div className="image-progress-header"><span className="image-progress-label">{imageProgress.label}</span><strong className="image-progress-percent">{Math.round(imageProgress.percent)}%</strong></div>
-            <div className="image-progress-track" role="progressbar" aria-label="Estimated image generation progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(imageProgress.percent)} aria-valuetext={Math.round(imageProgress.percent) + " percent estimated"}>
+            <div className="image-progress-header"><span className="image-progress-label">{t(imageProgress.label)}</span><strong className="image-progress-percent">{Math.round(imageProgress.percent)}%</strong></div>
+            <div className="image-progress-track" role="progressbar" aria-label={t("Estimated image generation progress")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(imageProgress.percent)} aria-valuetext={Math.round(imageProgress.percent) + " percent estimated"}>
               <div className="image-progress-fill" style={{width: imageProgress.percent + "%"}}/>
             </div>
-            <div className="image-progress-meta"><span>{imageProgress.stage === "ready" ? "Completed" : imageProgress.stage === "failed" ? "See error above" : "Estimated progress — actual time may vary"}</span><span>Elapsed {Math.floor(imageProgress.elapsed / 60)}:{String(imageProgress.elapsed % 60).padStart(2, "0")}</span></div>
+            <div className="image-progress-meta"><span>{t(imageProgress.stage === "ready" ? "Completed" : imageProgress.stage === "failed" ? "See error above" : "Estimated progress — actual time may vary")}</span><span>{t("Elapsed")} {Math.floor(imageProgress.elapsed / 60)}:{String(imageProgress.elapsed % 60).padStart(2, "0")}</span></div>
           </div>}
         </form>
-        <div className="image-grid">{generatedImages.map((url, i) => <div className="image-result" key={i}><img src={url} alt="AI-generated image"/><a href={url} target="_blank" rel="noreferrer">View full image</a></div>)}</div>
+        <div className="image-grid">{generatedImages.map((url, i) => <div className="image-result" key={i}><img src={url} alt={t("AI-generated image")}/><a href={url} target="_blank" rel="noreferrer">{t("View full image")}</a></div>)}</div>
       </section>}
-      {tab === "files" && <section className="page-content"><div className="page-heading"><div className="topic-icon"><FileText size={27}/></div><h1>Your knowledge, privately stored</h1><p>Upload PDFs, DOCX, XLSX, CSV, images and source files. Extracted text can be used in your conversations.</p></div><button className="primary" disabled={busy} onClick={() => fileInput.current?.click()}><Plus size={18}/> Add document</button>
-        <div className="file-list">{files.map(f => <div className="file-row" key={f.id}><div className="file-symbol">{f.kind === "image" ? <ImageIcon/> : <FileText/>}</div><div className="file-info"><b>{f.name}</b><span>Added {date(f.created)} · Automatically removed after 7 days</span></div><button className="secondary" onClick={() => {setChosenFiles(old => old.includes(f.id) ? old : [...old.slice(-3), f.id]);setTab("chat");}}>Use in chat</button><button className="icon-btn" onClick={async () => {await del("/uploads/" + f.id);setFiles(old => old.filter(x => x.id !== f.id));}}><Trash2 size={17}/></button></div>)}{!files.length && <div className="empty">No documents uploaded yet.</div>}</div>
+      {tab === "files" && <section className="page-content"><div className="page-heading"><div className="topic-icon"><FileText size={27}/></div><h1>{t("Your knowledge, privately stored")}</h1><p>{t("Upload PDFs, DOCX, XLSX, CSV, images and source files. Extracted text can be used in your conversations.")}</p></div><button className="primary" disabled={busy} onClick={() => fileInput.current?.click()}><Plus size={18}/> Add document</button>
+        <div className="file-list">{files.map(f => <div className="file-row" key={f.id}><div className="file-symbol">{f.kind === "image" ? <ImageIcon/> : <FileText/>}</div><div className="file-info"><b>{f.name}</b><span>{t("Added")} {date(f.created)} · {t("Automatically removed after 7 days")}</span></div><button className="secondary" onClick={() => {setChosenFiles(old => old.includes(f.id) ? old : [...old.slice(-3), f.id]);setTab("chat");}}>{t("Use in chat")}</button><button className="icon-btn" onClick={async () => {await del("/uploads/" + f.id);setFiles(old => old.filter(x => x.id !== f.id));}}><Trash2 size={17}/></button></div>)}{!files.length && <div className="empty">{t("No documents uploaded yet.")}</div>}</div>
       </section>}
-      {tab === "settings" && <section className="page-content narrow"><div className="page-heading"><div className="topic-icon"><UserRound size={27}/></div><h1>Account settings</h1><p>{user.email}</p></div>
-        <div className="panel"><h3>Edit profile</h3><form onSubmit={saveProfile} className="settings-form"><label>Display name<input maxLength={60} required value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Your display name"/></label><button className="primary" type="submit"><UserRound size={17}/> Save profile</button></form></div>
-        <div className="panel"><h3>Change password</h3><form onSubmit={changePassword} className="settings-form"><label>Current password<input type="password" required value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}/></label><label>New password (12+ characters)<input type="password" required minLength={12} maxLength={128} value={newPassword} onChange={e => setNewPassword(e.target.value)}/></label><button type="submit" className="primary"><KeyRound size={16}/> Change password</button></form></div>
-        <div className="panel"><h3>Privacy and retention</h3><p>Your conversations, uploaded files, generated images and related content activity logs are automatically deleted after seven days. You can delete them earlier. Your account remains until you remove it.</p></div>
-        <div className="panel danger"><h3>Delete account</h3><p>Immediately remove your account, sessions, conversations and stored files.</p><button className="danger-btn" onClick={deleteAccount}><Trash2 size={17}/> Delete my account</button></div>
+      {tab === "settings" && <section className="page-content narrow"><div className="page-heading"><div className="topic-icon"><UserRound size={27}/></div><h1>{t("Account settings")}</h1><p>{user.email}</p></div>
+        <div className="panel"><h3>{t("Edit profile")}</h3><form onSubmit={saveProfile} className="settings-form"><label>{t("Display name")}<input maxLength={60} required value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder={t("Your display name")}/></label><button className="primary" type="submit"><UserRound size={17}/> Save profile</button></form></div>
+        <div className="panel"><h3>{t("Change password")}</h3><form onSubmit={changePassword} className="settings-form"><label>{t("Current password")}<input type="password" required value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}/></label><label>{t("New password (12+ characters)")}<input type="password" required minLength={12} maxLength={128} value={newPassword} onChange={e => setNewPassword(e.target.value)}/></label><button type="submit" className="primary"><KeyRound size={16}/> Change password</button></form></div>
+        <div className="panel"><h3>{t("Privacy and retention")}</h3><p>{t("Your conversations, uploaded files, generated images and related content activity logs are automatically deleted after seven days. You can delete them earlier. Your account remains until you remove it.")}</p></div>
+        <div className="panel danger"><h3>{t("Delete account")}</h3><p>{t("Immediately remove your account, sessions, conversations and stored files.")}</p><button className="danger-btn" onClick={deleteAccount}><Trash2 size={17}/> Delete my account</button></div>
       </section>}
-      {tab === "admin" && user.role === "admin" && <section className="page-content wide"><div className="page-heading"><div className="topic-icon"><ShieldCheck size={27}/></div><h1>Super Admin</h1><p>Account management, usage metadata, system events and content deletion. Private message bodies are not displayed.</p></div>
+      {tab === "admin" && user.role === "admin" && <section className="page-content wide"><div className="page-heading"><div className="topic-icon"><ShieldCheck size={27}/></div><h1>Super Admin</h1><p>{t("Account management, usage metadata, system events and content deletion. Private message bodies are not displayed.")}</p></div>
         <button className="secondary" onClick={refreshAdmin}><RefreshCw size={16}/> Refresh dashboard</button>
-        {admin && <><div className="stats">{Object.entries(admin.totals).map(([k,v]) => <div className="stat" key={k}><strong>{v}</strong><span>{k}</span></div>)}</div><div className="panel"><h3>Accounts</h3><div className="admin-table">{admin.accounts.map(u => <div className="admin-row" key={u.id}><span><b>{u.email}</b><small>{u.role} · {u.verified ? "verified" : "pending"} · {date(u.created)}</small></span>{u.role !== "admin" && <button className="danger-link" onClick={() => adminDelete(u.id, "user")}>Delete account</button>}</div>)}</div></div>
-          <div className="panel"><h3>Stored content metadata</h3><div className="admin-table">{admin.content.map(x => <div className="admin-row" key={x.type+x.id}><span><b>{x.name || x.title || x.type}</b><small>{x.type} · owner {x.user_id.slice(0, 8)}… · {date(x.created)}</small></span><button className="danger-link" onClick={() => adminDelete(x.id, x.type)}>Delete</button></div>)}</div></div>
-          <div className="panel"><h3>Security and activity events</h3><div className="admin-table">{admin.audits.map((x,i) => <div className="admin-row" key={i}><span><b>{x.event.replaceAll("_", " ")}</b><small>{date(x.created)} {clock(x.created)} · {x.user_id ? x.user_id.slice(0,8)+"…" : "system"} · {x.detail}</small></span></div>)}</div></div></>}
+        {admin && <><div className="stats">{Object.entries(admin.totals).map(([k,v]) => <div className="stat" key={k}><strong>{v}</strong><span>{k}</span></div>)}</div><div className="panel"><h3>{t("Accounts")}</h3><div className="admin-table">{admin.accounts.map(u => <div className="admin-row" key={u.id}><span><b>{u.email}</b><small>{u.role} · {t(u.verified ? "verified" : "pending")} · {date(u.created)}</small></span>{u.role !== "admin" && <button className="danger-link" onClick={() => adminDelete(u.id, "user")}>{t("Delete account")}</button>}</div>)}</div></div>
+          <div className="panel"><h3>{t("Stored content metadata")}</h3><div className="admin-table">{admin.content.map(x => <div className="admin-row" key={x.type+x.id}><span><b>{x.name || x.title || x.type}</b><small>{x.type} · owner {x.user_id.slice(0, 8)}… · {date(x.created)}</small></span><button className="danger-link" onClick={() => adminDelete(x.id, x.type)}>{t("Delete")}</button></div>)}</div></div>
+          <div className="panel"><h3>{t("Security and activity events")}</h3><div className="admin-table">{admin.audits.map((x,i) => <div className="admin-row" key={i}><span><b>{x.event.replaceAll("_", " ")}</b><small>{date(x.created)} {clock(x.created)} · {x.user_id ? x.user_id.slice(0,8)+"…" : "system"} · {x.detail}</small></span></div>)}</div></div></>}
       </section>}
       <input ref={fileInput} hidden type="file" accept=".txt,.md,.json,.csv,.js,.jsx,.ts,.tsx,.py,.html,.css,.pdf,.docx,.xlsx,.png,.jpg,.jpeg,.webp" onChange={upload}/>
     </main>
-    {showLogs && <aside className="activity-pane"><div className="activity-header"><div><Activity size={18}/><b>Activity</b></div><button className="icon-btn" onClick={() => setShowLogs(false)} title="Hide activity"><PanelLeftClose size={18}/></button></div>
-      <div className="status-card"><div className="status-ring"><span/></div><div><b>{busy ? "Processing locally" : "Ready to help"}</b><small>{busy ? "Working on your request..." : "No external AI API connected"}</small></div></div>
-      <div className="activity-caption">LIVE OPERATIONS</div><div className="activity-feed">{logs.map((l,i) => <div className="log-row" key={i}><div className="log-symbol">{l.event.includes("fail") || l.event.includes("blocked") ? <AlertCircle size={15}/> : <CheckCircle2 size={15}/>}</div><div><b>{l.event.replaceAll("_", " ")}</b><p>{l.detail}</p><span>{clock(l.created)}</span></div></div>)}</div>
+    {showLogs && <aside className="activity-pane"><div className="activity-header"><div><Activity size={18}/><b>{t("Activity")}</b></div><button className="icon-btn" onClick={() => setShowLogs(false)} title="Hide activity"><PanelLeftClose size={18}/></button></div>
+      <div className="status-card"><div className="status-ring"><span/></div><div><b>{t(busy ? "Processing locally" : "Ready to help")}</b><small>{t(busy ? "Working on your request..." : "No external AI API connected")}</small></div></div>
+      <div className="activity-caption">{t("LIVE OPERATIONS")}</div><div className="activity-feed">{logs.map((l,i) => <div className="log-row" key={i}><div className="log-symbol">{l.event.includes("fail") || l.event.includes("blocked") ? <AlertCircle size={15}/> : <CheckCircle2 size={15}/>}</div><div><b>{l.event.replaceAll("_", " ")}</b><p>{l.detail}</p><span>{clock(l.created)}</span></div></div>)}</div>
       <div className="activity-footer"><ShieldCheck size={16}/> Protected by seven-day retention</div>
     </aside>}
   </div>;
