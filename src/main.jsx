@@ -80,7 +80,6 @@ function Auth({ onLogin }) {
 function App() {
   const [user, setUser] = useState(undefined);
   const [backendOffline, setBackendOffline] = useState(false);
-  const [models, setModels] = useState([]);
   const [model, setModel] = useState("");
   const [chats, setChats] = useState([]);
   const [chatId, setChatId] = useState("");
@@ -117,7 +116,7 @@ function App() {
   }, []);
   async function refresh() {
     const [m, c, f, l, i] = await Promise.allSettled([request("/models"), request("/chats"), request("/uploads"), request("/logs"), request("/images/status")]);
-    if (m.status === "fulfilled") { const list = m.value.models || []; setModels(list); setModel(old => list.includes(old) ? old : list.find(x => x.includes("coder")) || list[0] || ""); }
+    if (m.status === "fulfilled") { const list = m.value.models || []; setModel(old => list.includes(old) ? old : list.find(x => x.includes("coder")) || list[0] || ""); }
     else addLog("model_unavailable", "Start Ollama locally");
     if (c.status === "fulfilled") setChats(c.value.chats);
     if (f.status === "fulfilled") setFiles(f.value.uploads);
@@ -245,7 +244,7 @@ function App() {
     <main className="main">
       <header className="topbar">
         <div className="top-left">{!sidebar && <button className="icon-btn" onClick={() => setSidebar(true)}><PanelLeftOpen size={19}/></button>}<span className="page-name">{tab === "chat" ? "Junior AI" : tab === "images" ? "Image studio" : tab === "files" ? "Knowledge library" : tab === "admin" ? "Super Admin" : "Settings"}</span><span className="local-label"><span className="live-dot"/> Local AI</span></div>
-        <div className="top-right">{tab === "chat" && <select className="model-select" value={model} onChange={e => setModel(e.target.value)}><option value="">Choose a model</option>{models.map(x => <option key={x} value={x}>{x}</option>)}</select>}<button className={showLogs ? "icon-btn selected-icon" : "icon-btn"} onClick={() => setShowLogs(!showLogs)} title="Toggle activity log"><Activity size={19}/></button></div>
+        <div className="top-right">{tab === "chat" && <span className="model-ready" title={model ? "Junior AI automatically selected a local model" : "Start Ollama to use AI chat"}><span className={model ? "model-ready-dot" : "model-ready-dot offline"}/>{model ? "AI ready" : "AI offline"}</span>}<button className={showLogs ? "icon-btn selected-icon" : "icon-btn"} onClick={() => setShowLogs(!showLogs)} title="Toggle activity log"><Activity size={19}/></button></div>
       </header>
       {notice && <div className="notice"><AlertCircle size={17}/>{notice}<button onClick={() => setNotice("")}>×</button></div>}
       {tab === "chat" && <div className="chat-stage">
