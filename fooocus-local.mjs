@@ -52,7 +52,7 @@ async function waitForFreshImage(existed, beganAt, timeoutMs = 12 * 60 * 1000) {
     const items = await scanFiles(OUTPUT_DIR);
     const item = items.find(f => !existed.has(f.path) && f.modified >= beganAt - 2000);
     if (item) {
-      if (candidate === item.path && stableSize === item.size) return item.path;
+      if (candidate === item.path && stableSize === item.size && item.size < 18_000_000) return item.path;
       candidate = item.path;
       stableSize = item.size;
     }
@@ -76,7 +76,7 @@ export async function generateUsingOfficialFooocus(prompt) {
     await box.fill(prompt);
     // Apply a restrictive negative prompt where the official UI exposes it.
     const negative = page.locator('#negative_prompt textarea, textarea#negative_prompt').first();
-    if (await negative.count()) {
+    if (await negative.count() && await negative.isVisible()) {
       await negative.fill("nudity, explicit sexual content, pornography, minors, graphic violence");
     }
     const generate = page.locator("#generate_button button, button#generate_button").first();
