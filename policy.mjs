@@ -1,7 +1,7 @@
 // Defense in depth: keyword checks complement (but cannot guarantee) model alignment.
 // Do not log raw user input or assistant responses.
-const sexual = /\b(porn(?:ography|ographic)?|explicit sex|sexual intercourse|child sexual|nude (?:child|minor|person)|generate nudity|hardcore sex|erotic porn)\b/i;
-const bypass = /\b(?:disable|ignore|remove|bypass)\s+(?:all\s+)?(?:safety|moderation|content filter)\b/i;
+const sexual = /\b(porn(?:ography|ographic)?|explicit sex|sexual intercourse|child sexual|nude(?:s|ness)?|nudity|naked|topless|nsfw|hardcore sex|erotic|sexualized|fetish|sex scene|genitals)\b/i;
+const bypass = /\b(?:disable|ignore|remove|bypass)\s+(?:all\s+)?(?:safety|moderation|content filter|safety filters|content filters)\b/i;
 const profanity = /\b(fuck(?:ing|ed|er)?|shit(?:ty)?|bitch(?:es)?|motherfucker|asshole|cunt|dickhead)\b/gi;
 export const isBlocked = (text) => sexual.test(text) || bypass.test(text);
 export const cleanOutput = (text) => String(text).replace(profanity, "[respectful language]").replace(sexual, "[content withheld]");
