@@ -31,7 +31,10 @@ app.use(cookieParser());
 app.use(express.json({ limit: "80kb" }));
 app.use("/api", (_req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 180, standardHeaders: "draft-7", legacyHeaders: false }));
-const origins = new Set([PUBLIC_URL, "http://localhost:5173", "http://127.0.0.1:5173"]);
+const origins = new Set([PUBLIC_URL]);
+if (process.env.NODE_ENV !== "production") {
+  for (const origin of ["http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:5173", "http://127.0.0.1:5173"]) origins.add(origin);
+}
 app.use((req, res, next) => {
   if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
     const origin = req.get("origin");
