@@ -77,6 +77,7 @@ function Auth({ onLogin }) {
 
 function App() {
   const [user, setUser] = useState(undefined);
+  const [backendOffline, setBackendOffline] = useState(false);
   const [models, setModels] = useState([]);
   const [model, setModel] = useState("");
   const [chats, setChats] = useState([]);
@@ -103,7 +104,15 @@ function App() {
   const fileInput = useRef(null);
   const bottom = useRef(null);
   const addLog = (event, detail = "") => setLogs(old => [{ created: Date.now(), event, detail }, ...old].slice(0, 60));
-  useEffect(() => { request("/auth/me").then(d => setUser(d.user)).catch(() => setUser(null)); }, []);
+  useEffect(() => {
+    request("/health").then(health => {
+      if (health.ok !== true || health.runtime !== "local") throw new Error("Local AI backend is unavailable");
+      return request("/auth/me");
+    }).then(data => setUser(data.user || null)).catch(() => {
+      setBackendOffline(true);
+      setUser(null);
+    });
+  }, []);
   async function refresh() {
     const [m, c, f, l, i] = await Promise.allSettled([request("/models"), request("/chats"), request("/uploads"), request("/logs"), request("/images/status")]);
     if (m.status === "fulfilled") { const list = m.value.models || []; setModels(list); setModel(old => list.includes(old) ? old : list.find(x => x.includes("coder")) || list[0] || ""); }
@@ -191,6 +200,18 @@ function App() {
     } catch(e) { setNotice(e.message); }
   }
   if (user === undefined) return <div className="boot"><Sparkles className="pulse" size={38}/><span>Starting Junior AI...</span></div>;
+  if (backendOffline) return <div className="auth-page">
+    <div className="brand auth-brand"><div className="brandmark"><Sparkles size={22}/></div><span>Junior <b>AI</b></span></div>
+    <div className="auth-card">
+      <div className="auth-icon"><ShieldCheck size={27}/></div>
+      <h1>Junior AI is connecting</h1>
+      <p className="muted">The public website is ready, but the secure connection to its local AI computer has not been configured or is temporarily unavailable. No private files or passwords have been uploaded.</p>
+      <div className="info-card"><AlertCircle size={18}/><span>The owner must start Junior AI on the home PC and connect it through the Pangolin gateway. Try again once the connection is ready.</span></div>
+      <button className="primary full" onClick={() => window.location.reload()}><RefreshCw size={17}/> Recheck secure connection</button>
+      <div className="privacy-note"><ShieldCheck size={15}/> This site will not accept account details until its secure server is connected.</div>
+    </div>
+  </div>;
+  
   if (!user) return <Auth onLogin={setUser}/>;
   return <div className="shell">
     {sidebar && <aside className="sidebar">
