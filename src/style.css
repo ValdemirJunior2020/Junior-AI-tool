@@ -74,3 +74,14 @@
   .image-progress-meta{font-size:10px}
 }
 @media(prefers-reduced-motion:reduce){.image-progress-fill:after{animation:none}.image-progress-fill{transition:none}}
+
+
+/* Calm, customer-facing connection recovery screen */
+.junior-connecting-page{min-height:100dvh;padding:24px 18px;background:radial-gradient(circle at 50% 15%,#edf0ff 0,transparent 50%),#fbfcff}
+.junior-connecting-card{text-align:center;padding:40px 30px 30px;max-width:420px}
+.junior-connecting-icon{width:64px;height:64px;border-radius:21px;display:grid;place-items:center;margin:0 auto 24px;background:linear-gradient(145deg,#edf2ff,#efe7ff);color:#6d68c7;box-shadow:0 5px 20px #6f78c522}
+.junior-connecting-card h1{font-size:25px;line-height:1.2;margin-bottom:13px}
+.junior-connecting-card>.muted{font-size:14px;line-height:1.65;max-width:285px;margin:0 auto 23px;color:#777f96}
+.junior-connecting-indicator{display:flex;justify-content:center;align-items:center;gap:9px;min-height:44px;margin-bottom:16px;color:#686f9e;font-size:12px;font-weight:600}
+.junior-connecting-card>.primary{min-height:46px;justify-content:center}
+@media(max-width:570px){.junior-connecting-card{padding:34px 22px 26px}.junior-connecting-card h1{font-size:23px}.junior-connecting-page .auth-brand{margin-bottom:24px}}
