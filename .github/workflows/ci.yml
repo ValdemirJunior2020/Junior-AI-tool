@@ -24,6 +24,10 @@ jobs:
         run: |
           npm run build:netlify
           grep -Fq '/api/* https://backend.example.org/api/:splat 200' dist/_redirects
+      - name: Prepare safe offline upload artifact
+        env:
+          JUNIOR_BACKEND_URL: ""
+        run: npm run build:netlify
       - name: Save built static site
         uses: actions/upload-artifact@v4
         with:
