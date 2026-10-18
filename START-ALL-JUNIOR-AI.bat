@@ -37,7 +37,7 @@ if not exist "C:\AI\Fooocus_win64_2-5-0\python_embeded\python.exe" (
   powershell -NoProfile -Command "exit (-not (Test-NetConnection -ComputerName 127.0.0.1 -Port 7865 -InformationLevel Quiet -WarningAction SilentlyContinue))" >nul 2>nul
   if errorlevel 1 (
     echo Starting Fooocus AMD in a separate window...
-    start "Junior AI - Fooocus AMD" cmd /k "cd /d \"%~dp0\" && npm run fooocus:start"
+    start "Junior AI - Fooocus AMD" /D "%~dp0" cmd /k "npm run fooocus:start"
   ) else (
     echo Fooocus is already running.
   )
