@@ -12,5 +12,21 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm test
-      - run: npm run build
       - run: node --check server.mjs
+      - run: npm run build:netlify
+      - name: Check safe offline Netlify rewrites
+        run: |
+          grep -Fq '/api/* /backend-unavailable.json 200' dist/_redirects
+          test -f dist/backend-unavailable.json
+      - name: Check worldwide Pangolin proxy rewriting
+        env:
+          JUNIOR_BACKEND_URL: https://backend.example.org
+        run: |
+          npm run build:netlify
+          grep -Fq '/api/* https://backend.example.org/api/:splat 200' dist/_redirects
+      - name: Save built static site
+        uses: actions/upload-artifact@v4
+        with:
+          name: junior-ai-netlify-dist
+          path: dist/
+          retention-days: 7
