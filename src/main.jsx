@@ -96,6 +96,11 @@ function App() {
   const [imageEnabled, setImageEnabled] = useState(false);
   const [imageOnline, setImageOnline] = useState(false);
   const [imageStatus, setImageStatus] = useState("");
+  const [imageProgress, setImageProgress] = useState(null);
+  const imageProgressTimer = useRef(null);
+  const imageProgressReset = useRef(null);
+  const imageGeneratingSince = useRef(0);
+  const imageRequestStarted = useRef(0);
   const [admin, setAdmin] = useState(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -115,6 +120,10 @@ function App() {
   function goTo(nextTab) { setTab(nextTab); dismissMobileMenu(); }
   const fileInput = useRef(null);
   const bottom = useRef(null);
+  useEffect(() => () => {
+    clearInterval(imageProgressTimer.current);
+    clearTimeout(imageProgressReset.current);
+  }, []);
   const addLog = (event, detail = "") => setLogs(old => [{ created: Date.now(), event, detail }, ...old].slice(0, 60));
   useEffect(() => {
     request("/health").then(health => {
@@ -188,13 +197,65 @@ function App() {
     } finally { setBusy(false); setQueueStatus(null); }
   }
   async function createImage(e) {
-    e.preventDefault(); if (!imagePrompt.trim() || busy) return;
-    setBusy(true); setNotice(""); addLog("generating_image", "Fooocus local");
+    e?.preventDefault();
+    if (!imagePrompt.trim() || busy || !imageEnabled || !imageOnline) return;
+    setBusy(true);
+    setNotice("");
+    addLog("generating_image", "Requesting Fooocus image");
+    clearInterval(imageProgressTimer.current);
+    clearTimeout(imageProgressReset.current);
+    imageRequestStarted.current = Date.now();
+    imageGeneratingSince.current = 0;
+    setImageProgress({ stage: "sending", percent: 2, label: "Sending image request...", elapsed: 0 });
+    imageProgressTimer.current = setInterval(() => {
+      setImageProgress(prev => {
+        if (!prev || prev.stage === "ready" || prev.stage === "failed") return prev;
+        const elapsed = Math.floor((Date.now() - imageRequestStarted.current) / 1000);
+        if (prev.stage !== "generating") return { ...prev, elapsed };
+        const generationSeconds = (Date.now() - imageGeneratingSince.current) / 1000;
+        // An estimate, not Fooocus's real diffusion-step completion percentage.
+        const percent = Math.min(95, Math.max(prev.percent, Math.round(12 + 83 * (1 - Math.exp(-generationSeconds / 165)))));
+        const label = percent < 24 ? "Preparing Fooocus..." : percent < 90 ? "Generating image..." : "Finalizing image...";
+        return { ...prev, percent, label, elapsed };
+      });
+    }, 1000);
     try {
-      const result = await post("/images/generate", { prompt: imagePrompt });
-      setGeneratedImages(old => [result.url, ...old]); addLog("image_ready", "Saved for seven days");
-    } catch (err) { setNotice(err.message); addLog("image_failed", err.message); }
-    finally { setBusy(false); }
+      const accepted = await post("/images/generate", { prompt: imagePrompt.trim() });
+      if (!accepted.id) throw Error("Fooocus did not return a request ticket");
+      let result = null;
+      // Poll small authenticated status requests instead of keeping one long
+      // HTTP response open through Netlify while Fooocus creates the image.
+      for (let attempts = 0; attempts < 3600; attempts++) {
+        const status = await request("/images/jobs/" + encodeURIComponent(accepted.id));
+        if (status.status === "finished") {
+          result = status.result;
+          break;
+        }
+        if (status.status === "failed") throw Error(status.error || "Image generation failed");
+        if (status.status === "running") {
+          if (!imageGeneratingSince.current) imageGeneratingSince.current = Date.now();
+          setImageProgress(prev => ({ ...prev, stage: "generating", percent: Math.max(12, prev?.percent || 0), label: "Preparing Fooocus..." }));
+        } else {
+          const position = Math.max(1, Number(status.position) || 1);
+          setImageProgress(prev => ({ ...prev, stage: "waiting", percent: 5, label: "You're #" + position + " in line — waiting for your turn..." }));
+        }
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      if (!result?.url) throw Error("Image generation is still running. Check My Images after refreshing.");
+      setGeneratedImages(old => [result.url, ...old.filter(url => url !== result.url)]);
+      setImageProgress(prev => ({ ...prev, stage: "ready", percent: 100, label: "Image ready!", elapsed: Math.floor((Date.now() - imageRequestStarted.current) / 1000) }));
+      addLog("image_ready", "Saved privately for seven days");
+      imageProgressReset.current = setTimeout(() => setImageProgress(null), 8000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setImageProgress(prev => ({ ...prev, stage: "failed", label: "Image generation could not finish", elapsed: Math.floor((Date.now() - imageRequestStarted.current) / 1000) }));
+      setNotice(message);
+      addLog("image_failed", message);
+    } finally {
+      clearInterval(imageProgressTimer.current);
+      imageProgressTimer.current = null;
+      setBusy(false);
+    }
   }
   async function removeChat(id) {
     if (!window.confirm("Delete this conversation now?")) return;
@@ -302,7 +363,20 @@ function App() {
         {!imageEnabled && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>Image generation is currently disabled.</strong> {user.role === "admin" ? "Install and start Fooocus AMD, set ENABLE_FOOOCUS=true in your local .env file, then restart Junior AI. The Generate button unlocks after Fooocus is running." : "The owner has not enabled image generation for this account."}</span></div>}
         {imageEnabled && !imageOnline && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>Fooocus is enabled but offline.</strong> Start it using npm run fooocus:start on your AI computer, then select Recheck. The Generate button unlocks when the local Fooocus service responds.</span></div>}
         <div className="info-card image-service-status"><Activity size={19}/><span>{imageStatus || "Checking official Fooocus on your PC..."}</span><button className="secondary" type="button" onClick={refresh}><RefreshCw size={15}/> Recheck</button></div>
-        <form className="image-compose" onSubmit={createImage}><label>Describe the image<textarea rows={5} value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder="A peaceful, sunlit mountain landscape, cinematic photography..."/></label><button type="submit" className="primary" disabled={busy || !imagePrompt.trim() || !imageEnabled || !imageOnline}>{busy ? <Loader2 className="spin" size={18}/> : <Sparkles size={18}/>} Generate locally</button></form>
+        <form className="image-compose" onSubmit={createImage}>
+          <label>Describe the image<textarea rows={5} value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder="A peaceful, sunlit mountain landscape, cinematic photography..."/></label>
+          <button type="submit" className="primary" disabled={busy || !imagePrompt.trim() || !imageEnabled || !imageOnline}>
+            {busy ? <Loader2 className="spin" size={18}/> : <Sparkles size={18}/>}
+            {busy ? "Generating..." : "Generate locally"}
+          </button>
+          {imageProgress && <div className={"image-progress-card " + (imageProgress.stage === "failed" ? "image-progress-failed" : imageProgress.stage === "ready" ? "image-progress-ready" : "")} role="status" aria-live="polite">
+            <div className="image-progress-header"><span className="image-progress-label">{imageProgress.label}</span><strong className="image-progress-percent">{Math.round(imageProgress.percent)}%</strong></div>
+            <div className="image-progress-track" role="progressbar" aria-label="Estimated image generation progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(imageProgress.percent)} aria-valuetext={Math.round(imageProgress.percent) + " percent estimated"}>
+              <div className="image-progress-fill" style={{width: imageProgress.percent + "%"}}/>
+            </div>
+            <div className="image-progress-meta"><span>{imageProgress.stage === "ready" ? "Completed" : imageProgress.stage === "failed" ? "See error above" : "Estimated progress — actual time may vary"}</span><span>Elapsed {Math.floor(imageProgress.elapsed / 60)}:{String(imageProgress.elapsed % 60).padStart(2, "0")}</span></div>
+          </div>}
+        </form>
         <div className="image-grid">{generatedImages.map((url, i) => <div className="image-result" key={i}><img src={url} alt="AI-generated image"/><a href={url} target="_blank" rel="noreferrer">View full image</a></div>)}</div>
       </section>}
       {tab === "files" && <section className="page-content"><div className="page-heading"><div className="topic-icon"><FileText size={27}/></div><h1>Your knowledge, privately stored</h1><p>Upload PDFs, DOCX, XLSX, CSV, images and source files. Extracted text can be used in your conversations.</p></div><button className="primary" disabled={busy} onClick={() => fileInput.current?.click()}><Plus size={18}/> Add document</button>
