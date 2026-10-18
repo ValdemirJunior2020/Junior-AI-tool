@@ -34,13 +34,9 @@ echo [2/4] Checking Fooocus AMD...
 if not exist "C:\AI\Fooocus_win64_2-5-0\python_embeded\python.exe" (
   echo WARNING: Fooocus portable Python not found in expected directory.
 ) else (
-  powershell -NoProfile -Command "exit (-not (Test-NetConnection -ComputerName 127.0.0.1 -Port 7865 -InformationLevel Quiet -WarningAction SilentlyContinue))" >nul 2>nul
-  if errorlevel 1 (
-    echo Starting Fooocus AMD in a separate window...
-    start "Junior AI - Fooocus AMD" /D "%~dp0" cmd /k "npm run fooocus:start"
-  ) else (
-    echo Fooocus is already running.
-  )
+  echo Launching Fooocus supervisor in a separate window...
+  echo It will start Fooocus when needed and restart it if the process exits.
+  start "Junior AI - Fooocus AMD" /D "%~dp0" powershell.exe -NoProfile -ExecutionPolicy Bypass -NoExit -File "%~dp0scripts\watch-fooocus.ps1"
 )
 echo.
 echo [3/4] Building Junior AI frontend...
@@ -55,7 +51,7 @@ echo [4/4] Starting Junior AI...
 set "ENABLE_FOOOCUS=true"
 start "" "http://127.0.0.1:3001"
 echo.
-echo Keep this window open while using Junior AI.
+echo Keep this window open while using Junior AI.\necho Keep the Fooocus supervisor window open too; it will restart Fooocus if needed.
 echo Fooocus may take several minutes to start and download models.
 echo Image generation remains restricted to administrator accounts locally.
 echo.
