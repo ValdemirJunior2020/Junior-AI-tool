@@ -2,7 +2,6 @@ import "dotenv/config";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { db, newId, now, makePassword, goodPassword } from "../db.mjs";
-import { newTotpSecret } from "../mfa.mjs";
 
 const fromEnv = process.argv.includes("--from-env");
 if (!fromEnv && !input.isTTY) { console.error("Run interactively or use --from-env with local .env values."); process.exit(1); }
@@ -39,21 +38,16 @@ const password = fromEnv ? String(process.env.ADMIN_PASSWORD || "") : await hidd
 if (fromEnv && !password) { console.error("ADMIN_PASSWORD is missing from local .env."); process.exit(1); }
 if (!goodPassword(password)) { console.error("Password must be 12–128 characters."); process.exit(1); }
 const hash = await makePassword(password);
-const totp = newTotpSecret();
 const existing = db.prepare("SELECT id FROM users WHERE email=?").get(email);
 if (existing) {
-  db.prepare("UPDATE users SET pass=?, role='admin', verified=1, totp_secret=? WHERE id=?").run(hash, totp, existing.id);
+  db.prepare("UPDATE users SET pass=?, role='admin', verified=1, totp_secret='' WHERE id=?").run(hash, existing.id);
   db.prepare("DELETE FROM sessions WHERE user_id=?").run(existing.id);
   console.log("Administrator credentials updated. Previous sessions invalidated.");
 } else {
-  db.prepare("INSERT INTO users(id,email,pass,role,verified,created,totp_secret) VALUES (?,?,?,'admin',1,?,?)").run(newId(), email, hash, now(), totp);
+  db.prepare("INSERT INTO users(id,email,pass,role,verified,created) VALUES (?,?,?,'admin',1,?)").run(newId(), email, hash, now());
   console.log("Administrator created.");
 }
 console.log("\nLocal bootstrap complete. The password was hashed into SQLite.");
 if (fromEnv) console.log("Remove ADMIN_PASSWORD from .env after setup if you no longer need it there.");
-console.log("\nIMPORTANT: Add this key to an authenticator app on YOUR phone:");
-console.log(totp);
-console.log("\nAuthenticator setup URI (keep private):");
-console.log("otpauth://totp/" + encodeURIComponent("Junior AI:" + email) + "?secret=" + totp + "&issuer=Junior%20AI");
-console.log("\nEvery administrator login now requires its six-digit authenticator code. Save the key in a secure location.");
+console.log("Administrator login now requires email and password only.");
 db.close();
