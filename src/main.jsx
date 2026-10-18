@@ -92,6 +92,8 @@ function App() {
   const [imagePrompt, setImagePrompt] = useState("");
   const [generatedImages, setGeneratedImages] = useState([]);
   const [imageEnabled, setImageEnabled] = useState(false);
+  const [imageOnline, setImageOnline] = useState(false);
+  const [imageStatus, setImageStatus] = useState("");
   const [admin, setAdmin] = useState(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -109,7 +111,7 @@ function App() {
     if (c.status === "fulfilled") setChats(c.value.chats);
     if (f.status === "fulfilled") setFiles(f.value.uploads);
     if (l.status === "fulfilled") setLogs(l.value.logs);
-    if (i.status === "fulfilled") setImageEnabled(i.value.enabled);
+    if (i.status === "fulfilled") { setImageEnabled(i.value.enabled); setImageOnline(i.value.online); setImageStatus(i.value.note || ""); }
   }
   useEffect(() => { if (user) { refresh(); setDisplayName(user.display_name || ""); } }, [user?.id]);
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
@@ -248,9 +250,10 @@ function App() {
           <div className="footer-note">Junior AI is locally powered. It can make mistakes; verify important output.</div>
         </div>
       </div>}
-      {tab === "images" && <section className="page-content"><div className="page-heading"><div className="topic-icon purple"><WandSparkles size={27}/></div><h1>Imagine something new</h1><p>Create images on your computer using an optional Fooocus-API installation.</p></div>
-        {!imageEnabled && <div className="info-card"><AlertCircle size={19}/><span>Fooocus is not connected yet. Install the local API adapter and enable it in your .env file. AMD DirectML support depends on your setup.</span></div>}
-        <form className="image-compose" onSubmit={createImage}><label>Describe the image<textarea rows={5} value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder="A peaceful, sunlit mountain landscape, cinematic photography..."/></label><button type="submit" className="primary" disabled={busy || !imagePrompt.trim() || !imageEnabled}>{busy ? <Loader2 className="spin" size={18}/> : <Sparkles size={18}/>} Generate locally</button></form>
+      {tab === "images" && <section className="page-content"><div className="page-heading"><div className="topic-icon purple"><WandSparkles size={27}/></div><h1>Imagine something new</h1><p>Create images privately with the official Fooocus app and AMD DirectML, running on your own GPU.</p></div>
+        {!imageEnabled && <div className="info-card"><AlertCircle size={19}/><span>Official Fooocus is not available for this account. Configure your local .env and start the AMD launcher. Public access is disabled by default until safety review.</span></div>}
+        <div className="info-card"><Activity size={19}/><span>{imageStatus || "Checking official Fooocus on your PC..."}</span><button className="secondary" type="button" onClick={refresh}><RefreshCw size={15}/> Recheck</button></div>
+        <form className="image-compose" onSubmit={createImage}><label>Describe the image<textarea rows={5} value={imagePrompt} onChange={e => setImagePrompt(e.target.value)} placeholder="A peaceful, sunlit mountain landscape, cinematic photography..."/></label><button type="submit" className="primary" disabled={busy || !imagePrompt.trim() || !imageEnabled || !imageOnline}>{busy ? <Loader2 className="spin" size={18}/> : <Sparkles size={18}/>} Generate locally</button></form>
         <div className="image-grid">{generatedImages.map((url, i) => <div className="image-result" key={i}><img src={url} alt="AI-generated image"/><a href={url} target="_blank" rel="noreferrer">View full image</a></div>)}</div>
       </section>}
       {tab === "files" && <section className="page-content"><div className="page-heading"><div className="topic-icon"><FileText size={27}/></div><h1>Your knowledge, privately stored</h1><p>Upload PDFs, DOCX, XLSX, CSV, images and source files. Extracted text can be used in your conversations.</p></div><button className="primary" disabled={busy} onClick={() => fileInput.current?.click()}><Plus size={18}/> Add document</button>
