@@ -21,6 +21,7 @@ db.exec([
 "CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, filepath TEXT NOT NULL, created INTEGER NOT NULL)",
 "CREATE TABLE IF NOT EXISTS audit (id TEXT PRIMARY KEY, user_id TEXT, event TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL)"
 ].join(";") + ";");
+if (!db.pragma("table_info(users)").some(col => col.name === "display_name")) db.exec("ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''");
 export const now = () => Date.now();
 export const newId = () => randomBytes(16).toString("hex");
 export const digest = (v) => createHash("sha256").update(v).digest("hex");
