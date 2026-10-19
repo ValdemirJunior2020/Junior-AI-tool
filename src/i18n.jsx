@@ -87,6 +87,12 @@ const translations = {
   "LIVE OPERATIONS": "ATIVIDADES RECENTES",
   "Request failed": "Não foi possível concluir o pedido",
   "Junior AI is getting ready. Please try again soon.": "Junior AI está se preparando. Tente novamente em instantes.",
+  "Invalid login": "E-mail ou senha incorretos",
+  "That email is already registered": "Este e-mail já está cadastrado",
+  "Provide a valid email and a 12–128 character password": "Informe um e-mail válido e uma senha de 12 a 128 caracteres",
+  "Use a 12–128 character password": "Use uma senha de 12 a 128 caracteres",
+  "Use a 12–128 character new password": "Use uma nova senha de 12 a 128 caracteres",
+  "Junior AI couldn't finish this request. Please try again.": "Junior AI não conseguiu concluir o pedido. Tente novamente.",
   "Remember me": "Lembrar de mim",
   "Keep me signed in for 30 days": "Manter minha sessão por 30 dias",
   "Welcome to Junior AI! Your account is ready.": "Bem-vindo ao Junior AI! Sua conta está pronta."
