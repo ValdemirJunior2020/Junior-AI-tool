@@ -61,7 +61,24 @@ export async function searchPublicNews(question, {fetcher=fetch, nowMs=Date.now(
 export function newsEvidence(items) {
   return items.map((x,i)=>"["+ (i+1) +"] "+x.title+"\nPublisher: "+x.source+"\nPublished: "+x.published+"\nLink: "+x.url).join("\n\n");
 }
-export function newsSourcesFooter(items) {
-  return items.length ? "\n\n**Fontes de notícias consultadas (manchetes e datas; conteúdo integral não verificado):**\n"+
-    items.map(x=>"- "+x.source+" — "+x.published.slice(0,10)+": ["+x.title.replace(/[\[\]]/g,"")+"]("+x.url+")").join("\n") : "";
+// A compact source list; never display Google's multi-hundred-character RSS URLs.
+export function newsSourcesFooter(items, locale = "pt-BR") {
+  if (!items.length) return "";
+  const heading = locale === "en" ? "Sources checked" :
+    locale === "es-ES" ? "Fuentes consultadas" : "Fontes consultadas";
+  const caveat = locale === "en" ? "Headlines only — full articles and public opinion not verified." :
+    locale === "es-ES" ? "Solo titulares; no se verificaron artículos completos ni la opinión pública." :
+    "Somente manchetes; textos integrais e opinião pública não verificados.";
+  const visible = items.slice(0, 5);
+  // Title stays in the model's evidence, not in the footer: links should stay short.
+  const lines = visible.map((x, i) => {
+    const publisher = x.source.replace(/[\[\]\n\r]/g, "").slice(0, 70);
+    return "- **[" + (i + 1) + "]** [" + publisher + "](" + x.url + ") · " +
+      x.published.slice(0, 10).split("-").reverse().join("/");
+  });
+  const more = items.length > visible.length ? "\n" + (locale === "en" ? "Additional headlines found: " :
+    locale === "es-ES" ? "Otros titulares encontrados: " : "Outras manchetes encontradas: ") +
+    (items.length - visible.length) + "." : "";
+  return "\n\n---\n\n### 📰 " + heading + "\n\n" + lines.join("\n") +
+    more + "\n\n_" + caveat + "_";
 }
