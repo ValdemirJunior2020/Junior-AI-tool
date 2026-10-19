@@ -16,6 +16,7 @@ import { db, STORE, now, newId, WEEK, safeText, audit, cleanup, eraseFiles } fro
 import { router as authRouter, requireUser, requireAdmin, mailConfigured } from "./auth.mjs";
 import { SYSTEM_PROMPT, isBlocked, cleanOutput } from "./policy.mjs";
 import { imageIntent, imageCapabilityMessage } from "./image-intent.mjs";
+import { recognizeWhisperCliRequest, verifiedWhisperAnswer, TRUSTED_COMMAND_GUIDANCE } from "./trusted-commands.mjs";
 import { indexDocument, relevantDocuments, relevantMemories, backfillDocuments } from "./memory.mjs";
 
 const app = express();
