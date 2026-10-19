@@ -5,6 +5,8 @@ const EVENTS = /\b(debate|eleiç[ãõ]o|election|eleccion|president|presidente|b
 
 export function wantsFreshNews(question) {
   const p = String(question || "").slice(0, 1200);
+  // The word "news" inside a coding request is not a request to fetch current headlines.
+  if (/\b(react|component|javascript|typescript|python|css|html|code)\b/i.test(p) && /\b(create|build|write|implement|make)\b/i.test(p)) return false;
   return FRESH.test(p) && EVENTS.test(p);
 }
 export function newsSearchQuery(question) {
