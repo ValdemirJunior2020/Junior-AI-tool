@@ -26,15 +26,16 @@ export function compactConversation(messages, currentPrompt = "") {
   }
   return chosen.reverse();
 }
-const CODE_REFERENCE = /(?:c[oó]digo|exempl[oa]s?|fun[cç][aã]o|bloco|script|programa|trecho|code|example|snippet|function|block|those|these|esse|essa|eles|elas|isso|anterior|above|previous|primeir[oa]|segund[oa]|terceir[oa]|quart[oa]|quint[oa]|first|second|third|fourth|fifth)/i;
+const CODE_REFERENCE = /(?:c[oó]digo|exempl[oa]s?|fun[cç][aã]o|bloco|script|programa|trecho|code|example|snippet|function|block|those|these|esse|essa|eles|elas|isso|anterior|above|previous|primeir[oa]|segund[oa]|terceir[oa]|quart[oa]|quint[oa]|first|second|third|fourth|fifth|\b[1-6][º°ªo]?(?=\W|$))/i;
 const ORDINALS = [
-  /\b(?:primeir[oa]|first|1st|1[º°ªo]?)\b/i,
-  /\b(?:segund[oa]|second|2nd|2[º°ªo]?)\b/i,
-  /\b(?:terceir[oa]|third|3rd|3[º°ªo]?)\b/i,
-  /\b(?:quart[oa]|fourth|4th|4[º°ªo]?)\b/i,
-  /\b(?:quint[oa]|fifth|5th|5[º°ªo]?)\b/i,
-  /\b(?:sext[oa]|sixth|6th|6[º°ªo]?)\b/i
+  /\b(?:primeir[oa]|first|1st)\b|\b1[º°ªo]?(?=\W|$)/i,
+  /\b(?:segund[oa]|second|2nd)\b|\b2[º°ªo]?(?=\W|$)/i,
+  /\b(?:terceir[oa]|third|3rd)\b|\b3[º°ªo]?(?=\W|$)/i,
+  /\b(?:quart[oa]|fourth|4th)\b|\b4[º°ªo]?(?=\W|$)/i,
+  /\b(?:quint[oa]|fifth|5th)\b|\b5[º°ªo]?(?=\W|$)/i,
+  /\b(?:sext[oa]|sixth|6th)\b|\b6[º°ªo]?(?=\W|$)/i
 ];
+
 export function codeReferenceIndex(prompt) {
   const p = String(prompt || "").slice(0,400);
   if (!CODE_REFERENCE.test(p)) return null;
