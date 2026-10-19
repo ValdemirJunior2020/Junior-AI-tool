@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import "./style.css";
 import { useJuniorLanguage, LanguageFlags } from "./i18n.jsx";
+import { imageIntent } from "../image-intent.mjs";
 
 async function request(route, opts = {}) {
   const response = await fetch("/api" + route, { credentials: "include", ...opts,
@@ -198,6 +199,16 @@ function App() {
     e?.preventDefault();
     if (!text.trim() || busy || !model) return;
     const prompt = text.trim();
+    // Explicit image generation requests go to the real local image studio,
+    // not to text-only Ollama. Keep the prompt ready for the user's approval.
+    if (imageIntent(prompt) === "create" && imageEnabled && imageOnline) {
+      setImagePrompt(prompt.slice(0, 1500));
+      setText("");
+      setTab("images");
+      setNotice("");
+      dismissMobileMenu();
+      return;
+    }
     setText(""); setBusy(true); setNotice(""); setQueueStatus("Joining the waiting line...");
     setMessages(old => [...old, { id: "temp-" + Date.now(), role: "user", content: prompt }]);
     try {
@@ -215,7 +226,7 @@ function App() {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
       if (!result) throw new Error("The request is taking longer than expected. Please check your conversations before retrying.");
-      setMessages(old => [...old, { id: "answer-" + Date.now(), role: "assistant", content: result.answer }]);
+      setMessages(old => [...old, { id: "answer-" + Date.now(), role: "assistant", content: result.answer, imageStudioAvailable: result.imageStudioAvailable === true }]);
       setChatId(result.chatId); setChosenFiles([]);
       addLog("response_ready", "Local AI");
       const data = await request("/chats"); setChats(data.chats);
@@ -380,7 +391,15 @@ function App() {
             </div>
           </div> : messages.map((m, i) => <div className={"bubble-row " + m.role} key={m.id || i}>
               {m.role === "assistant" && <div className="assistant-icon"><Sparkles size={16}/></div>}
-              <div className="bubble">{m.role === "assistant" ? <ReactMarkdown>{m.content}</ReactMarkdown> : <p>{m.content}</p>}</div>
+              <div className="bubble">
+                {m.role === "assistant" ? <ReactMarkdown>{m.content}</ReactMarkdown> : <p>{m.content}</p>}
+                {m.role === "assistant" && imageEnabled && imageOnline
+                  && (m.imageStudioAvailable || imageIntent(messages[i - 1]?.content) === "capability")
+                  && <button type="button" className="image-studio-cta"
+                    onClick={() => { setTab("images"); setNotice(""); dismissMobileMenu(); }}>
+                    <ImageIcon size={16}/>{t("Open image studio")}
+                  </button>}
+              </div>
             </div>)}
           {busy && <div className="busy-line" role="status" aria-live="polite"><span className="shimmer-orb"/><span>{queueStatus ? t(queueStatus) : t("Junior AI is working...")}</span></div>}
           <div ref={bottom}/>
