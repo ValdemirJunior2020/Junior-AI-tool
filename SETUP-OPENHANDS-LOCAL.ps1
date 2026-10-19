@@ -31,6 +31,9 @@ uv tool install --python 3.12 openhands
 openhands --version
 '@
 Write-Host "Installing uv, Python 3.12 and the open-source OpenHands CLI inside Ubuntu WSL..."
+# PowerShell multiline here-strings contain CRLF on Windows; Bash needs LF.
+# Pass a single LF-normalized command argument, avoiding CR in 'set -euo pipefail'.
+$setup = $setup -replace "`r`n", "`n" -replace "`r", ""
 & wsl.exe --distribution Ubuntu --exec bash -lc $setup
 if ($LASTEXITCODE -ne 0) {
   Write-Host "OpenHands setup failed; original Junior AI remains unchanged." -ForegroundColor Red
