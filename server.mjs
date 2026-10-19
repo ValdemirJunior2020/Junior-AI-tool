@@ -163,7 +163,7 @@ async function processChatJob(job) {
     const response = await fetch(OLLAMA + "/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(180000),
       body: JSON.stringify({ model, stream: false, messages: [
-        { role: "system", content: SYSTEM_PROMPT
+        { role: "system", content: SYSTEM_PROMPT + "\n" + TRUSTED_COMMAND_GUIDANCE
           + "\nJunior AI has a separate local image creation studio powered by Fooocus. Never say Junior AI cannot create images in general. You cannot generate an image directly in an ordinary text-chat response. If asked to create an image, guide the user to the Create images studio. If image creation is disabled for this account or the engine is offline, state that limitation accurately. Image studio available for this user's current request: " + (imageAccess.enabled && imageAccess.online ? "yes" : "no") + "."
           + (locale === "pt-BR" ? "\nResponda em português brasileiro (PT-BR), mantendo as respostas claras e naturais, a menos que o usuário solicite explicitamente outro idioma." : "")
           + (locale === "es-ES" ? "\nResponde en español natural y claro. Mantén la conversación en español salvo que la persona pida expresamente otro idioma." : "") },
