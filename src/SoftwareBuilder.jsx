@@ -8,6 +8,7 @@ async function api(route,opts={}) {
   if(!r.ok) throw Error(j.error||"Builder request failed");
   return j;
 }
+function formatElapsed(seconds){const n=Math.max(0,Math.floor(seconds||0));const hh=Math.floor(n/3600),mm=Math.floor(n%3600/60),ss=n%60;return [hh,mm,ss].map(v=>String(v).padStart(2,"0")).join(":");}
 export default function SoftwareBuilder() {
   const [status,setStatus]=useState(null),[projects,setProjects]=useState([]),[active,setActive]=useState(""),[name,setName]=useState(""),[prompt,setPrompt]=useState("");
   const [error,setError]=useState(""),[starting,setStarting]=useState(false),[busy,setBusy]=useState(false);
@@ -55,7 +56,7 @@ export default function SoftwareBuilder() {
       <div><b>{status.enabled?"Builder configured":"Setup required"}</b><small>OpenHands + local Ollama • {status.model} • No paid API</small></div>
       <button type="button" className="secondary" onClick={()=>{setBusy(true);reload().catch(e=>setError(e.message)).finally(()=>setBusy(false));}} disabled={busy}><RefreshCw size={15}/> Refresh</button>
     </div>}
-    {status&&<p className="builder-small">Waiting: {status.waiting||0} • Running: {status.running||0} • Up to 45 minutes per build. Waiting times are estimates, not guaranteed.</p>}
+    {status&&<p className="builder-small">Waiting: {status.waiting||0} • Running: {status.running||0} • No fixed build deadline. Each project runs until done unless stalled.</p>}
     {status&&!status.enabled&&<div className="builder-setup"><b>OpenHands is not enabled on this PC.</b><p>Install Ubuntu WSL, Python 3.12, uv and OpenHands with the repository's <code>SETUP-OPENHANDS-LOCAL.ps1</code>. It will be enabled only after the local setup passes. Your original one-BAT launcher is preserved.</p></div>}
     {status?.configurationError&&<div className="builder-setup">{status.configurationError}</div>}
     {error&&<div className="builder-error" role="alert"><AlertCircle size={17}/>{error}</div>}
@@ -66,7 +67,7 @@ export default function SoftwareBuilder() {
         {starting?<Loader2 className="spin" size={17}/>:<Play size={17}/>} Create, test & package ZIP
       </button>
       {prompt.trim().length>0&&prompt.trim().length<20&&<p className="builder-small">Please describe what you want to build in at least 20 characters.</p>}
-      <p className="builder-small">Build jobs are limited to 45 minutes. If OpenHands fails, existing project files are preserved. Builds are not guaranteed to pass every test.</p>
+      <p className="builder-small">Projects can run as long as needed. If an agent stops responding for 2 hours, the queue moves on. Existing project files are preserved. Builds are not guaranteed to pass every test.</p>
     </form>
     <div className="builder-projects-head"><h2>Recent builds</h2><span>Files are kept locally for up to 7 days</span></div>
     {!projects.length?<div className="empty">No software projects created yet.</div>:<div className="builder-project-list">
@@ -75,8 +76,8 @@ export default function SoftwareBuilder() {
           <div className="builder-project-title"><FolderArchive size={20}/><div><strong>{p.name}</strong><small>{new Date(p.created).toLocaleString()} • {p.model}</small></div></div>
           <span className={"builder-state "+p.state}>{p.state==="ready"?<CheckCircle2 size={15}/>:p.state==="running"?<Loader2 className="spin" size={15}/>:null}{p.state}</span>
         </div>
-        {p.state==="queued"&&<p className="builder-queue">In queue: position {p.queuePosition||"pending"} • Estimated wait: up to {p.estimatedWaitMinutes??45} minutes</p>}
-        {p.state==="running"&&<p className="builder-queue">Generating your software • Maximum 45 minutes</p>}
+        {p.state==="queued"&&<p className="builder-queue">Queue position: {p.queuePosition||"pending"} • Waiting: {formatElapsed(p.elapsedSeconds)} • Start time depends on jobs ahead</p>}
+        {p.state==="running"&&<p className="builder-queue">Generating your software • Elapsed: {formatElapsed(p.elapsedSeconds)} • No fixed deadline</p>}
         {p.error&&<p className="builder-project-error">{p.error}</p>}
         {p.log?.length>0&&<details className="builder-logs" open={["running","failed","interrupted"].includes(p.state)}>
           <summary>OpenHands activity ({p.log.length} updates)</summary>
