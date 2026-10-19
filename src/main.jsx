@@ -393,7 +393,7 @@ function App() {
         <button className={tab === "chat" ? "nav active" : "nav"} onClick={() => goTo("chat")}><MessageSquare size={18}/> {t("Chat & coding")}</button>
         <button className={tab === "images" ? "nav active" : "nav"} onClick={() => goTo("images")}><ImageIcon size={18}/> {t("Create images")}</button>
         <button className={tab === "files" ? "nav active" : "nav"} onClick={() => goTo("files")}><FileText size={18}/> {t("My documents")}</button>
-        {user.role === "admin" && <button className={tab === "builder" ? "nav active" : "nav"} onClick={() => goTo("builder")}><Code2 size={18}/> Software Builder</button>}
+        <button className={tab === "builder" ? "nav active" : "nav"} onClick={() => goTo("builder")}><Code2 size={18}/> Software Builder</button>
         <button className={tab === "settings" ? "nav active" : "nav"} onClick={() => goTo("settings")}><Settings size={18}/> Account settings</button>
         {user.role === "admin" && <button className={tab === "admin" ? "nav active" : "nav"} onClick={() => goTo("admin")}><ShieldCheck size={18}/> Super Admin</button>}
       </div>
@@ -449,7 +449,7 @@ function App() {
           <div className="footer-note">{t("Junior AI is locally powered. It can make mistakes; verify important output.")}</div>
         </div>
       </div>}
-      {tab === "builder" && user.role === "admin" && <SoftwareBuilder/>}
+      {tab === "builder" && <SoftwareBuilder/>}
       {tab === "images" && <section className="page-content"><div className="page-heading"><div className="topic-icon purple"><WandSparkles size={27}/></div><h1>{t("Imagine something new")}</h1><p>{t("Describe what you'd like to see, and Junior AI will create an image for you.")}</p></div>
         {!imageEnabled && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>{t("Image creation is not available for this account yet.")}</strong> {t("Please check back later.")}</span></div>}
         {imageEnabled && !imageOnline && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>{t("Our image studio is temporarily unavailable.")}</strong> {t("Please try again in a few minutes. Thanks for your patience!")}</span></div>}
