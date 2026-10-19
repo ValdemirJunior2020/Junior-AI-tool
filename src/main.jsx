@@ -72,7 +72,7 @@ function Auth({ onLogin }) {
         <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}/>
         <span>{t("Remember me")}<small>{t("Keep me signed in for 30 days")}</small></span>
       </label>}
-      {message && <p className="inline-notice">{message}</p>
+      {message && <p className="inline-notice">{message}</p>}
       <button className="primary full" disabled={loading} type="submit">{loading ? <Loader2 className="spin" size={17}/> : <ChevronRight size={17}/>}{t(mode === "login" ? "Sign in" : mode === "register" ? "Create account" : mode === "forgot" ? "Send reset link" : "Save new password")}</button>
       <div className="auth-switch">
         {mode === "login" ? <button type="button" onClick={() => {setMode("forgot");setMessage("");}}>{t("Forgot your password?")}</button> :
