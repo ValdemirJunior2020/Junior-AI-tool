@@ -3,10 +3,12 @@ on:
   push:
     paths:
       - 'SETUP-OPENHANDS-LOCAL.ps1'
+      - 'scripts/ensure-builder-model.ps1'
       - '.github/workflows/windows-installer-syntax.yml'
   pull_request:
     paths:
       - 'SETUP-OPENHANDS-LOCAL.ps1'
+      - 'scripts/ensure-builder-model.ps1'
       - '.github/workflows/windows-installer-syntax.yml'
 jobs:
   check-powershell-parser:
