@@ -26,7 +26,7 @@ if (!localOnly(OLLAMA) || !localOnly(FOOOCUS)) throw Error("AI runtimes must bin
 if (process.env.NODE_ENV === "production" && !PUBLIC_URL.startsWith("https://")) throw Error("PUBLIC_URL must use HTTPS in production");
 app.disable("x-powered-by");
 app.set("trust proxy", "loopback");
-app.use(helmet({ contentSecurityPolicy: process.env.NODE_ENV === "production" ? { directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'"], imgSrc: ["'self'", "data:", "https://img.freeflagicons.com"], connectSrc: ["'self'"], objectSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'self'"] } } : false }));
+app.use(helmet({ contentSecurityPolicy: process.env.NODE_ENV === "production" ? { directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'"], imgSrc: ["'self'", "data:", "https://img.freeflagicons.com", "https://img.icons8.com"], connectSrc: ["'self'"], objectSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'self'"] } } : false }));
 app.use(cookieParser());
 app.use(express.json({ limit: "80kb" }));
 app.use("/api", (_req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
@@ -126,7 +126,9 @@ async function processChatJob(job) {
     const response = await fetch(OLLAMA + "/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(180000),
       body: JSON.stringify({ model, stream: false, messages: [
-        { role: "system", content: SYSTEM_PROMPT + (locale === "pt-BR" ? "\nResponda em português brasileiro (PT-BR), mantendo as respostas claras e naturais, a menos que o usuário solicite explicitamente outro idioma." : "") },
+        { role: "system", content: SYSTEM_PROMPT
+          + (locale === "pt-BR" ? "\nResponda em português brasileiro (PT-BR), mantendo as respostas claras e naturais, a menos que o usuário solicite explicitamente outro idioma." : "")
+          + (locale === "es-ES" ? "\nResponde en español natural y claro. Mantén la conversación en español salvo que la persona pida expresamente otro idioma." : "") },
         ...history.map(x => ({ role: x.role, content: x.content })), item
       ], options: { num_predict: 2300, temperature: 0.45 } })
     });
@@ -154,7 +156,7 @@ app.post("/api/chat", requireUser, workLimiter, (req, res) => {
   if (cid && !db.prepare("SELECT 1 FROM chats WHERE id=? AND user_id=?").get(cid, req.user.id)) return res.status(404).json({ error: "Chat not found" });
   if ([...jobs.values()].some(j => j.userId === req.user.id && ["waiting","running"].includes(j.state))) return res.status(409).json({ error: "You already have a request in line. Please wait for it to finish." });
   if (waiting.length >= MAX_WAITING) return res.status(429).json({ error: "The waiting line is full. Please try again shortly." });
-  const job = { id: newId(), kind: "chat", userId: req.user.id, prompt, model, locale: req.body.locale === "pt-BR" ? "pt-BR" : "en", chatId: cid, fileIds: Array.isArray(req.body.fileIds) ? req.body.fileIds.slice(0,4) : [], state: "waiting", createdAt: now() };
+  const job = { id: newId(), kind: "chat", userId: req.user.id, prompt, model, locale: ["pt-BR", "es-ES"].includes(req.body.locale) ? req.body.locale : "en", chatId: cid, fileIds: Array.isArray(req.body.fileIds) ? req.body.fileIds.slice(0,4) : [], state: "waiting", createdAt: now() };
   jobs.set(job.id, job);
   waiting.push(job);
   res.status(202).json(publicJob(job));
