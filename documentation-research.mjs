@@ -42,7 +42,7 @@ export async function crawlDocumentation(url, { timeoutMs = 24000 } = {}) {
     let result = "", errors = "";
     const proc = spawn(command, args, {
       cwd: process.cwd(), shell: false, windowsHide: true,
-      env: { ...process.env, CRAWL4AI_NO_CLOUD_NOTICE: "1", PYTHONUNBUFFERED: "1" },
+      env: { ...process.env, CRAWL4AI_NO_CLOUD_NOTICE: "1", PYTHONUNBUFFERED: "1", PYTHONIOENCODING: "utf-8" },
       stdio: ["ignore", "pipe", "pipe"]
     });
     const timer = setTimeout(() => { proc.kill(); reject(Error("Documentation research timed out")); }, timeoutMs);
