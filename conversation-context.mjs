@@ -26,7 +26,7 @@ export function compactConversation(messages, currentPrompt = "") {
   }
   return chosen.reverse();
 }
-const CODE_REFERENCE = /(?:c[oó]digo|exempl[oa]s?|fun[cç][aã]o|bloco|script|programa|trecho|code|example|snippet|function|block|those|these|esse|essa|eles|elas|isso|anterior|above|previous)/i;
+const CODE_REFERENCE = /(?:c[oó]digo|exempl[oa]s?|fun[cç][aã]o|bloco|script|programa|trecho|code|example|snippet|function|block|those|these|esse|essa|eles|elas|isso|anterior|above|previous|primeir[oa]|segund[oa]|terceir[oa]|quart[oa]|quint[oa]|first|second|third|fourth|fifth)/i;
 const ORDINALS = [
   /\b(?:primeir[oa]|first|1st|1[º°ªo]?)\b/i,
   /\b(?:segund[oa]|second|2nd|2[º°ªo]?)\b/i,
