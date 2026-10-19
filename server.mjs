@@ -68,7 +68,7 @@ app.get("/api/chats", requireUser, (req, res) => {
 app.get("/api/chats/:id", requireUser, (req, res) => {
   const c = db.prepare("SELECT id,title FROM chats WHERE id=? AND user_id=?").get(req.params.id, req.user.id);
   if (!c) return res.status(404).json({ error: "Chat not found" });
-  res.json({ chat: c, messages: db.prepare("SELECT id,role,content,created FROM messages WHERE chat_id=? AND user_id=? ORDER BY created LIMIT 100").all(c.id, req.user.id) });
+  res.json({ chat: c, messages: db.prepare("SELECT id,role,content,created FROM messages WHERE chat_id=? AND user_id=? ORDER BY created ASC, rowid ASC LIMIT 100").all(c.id, req.user.id) });
 });
 app.delete("/api/chats/:id", requireUser, (req, res) => {
   db.prepare("DELETE FROM chats WHERE id=? AND user_id=?").run(req.params.id, req.user.id);
@@ -134,7 +134,7 @@ async function processChatJob(job) {
       return;
     }
     // Recent conversation + relevant prior user messages, all scoped to this account and seven days.
-    const history = db.prepare("SELECT id,role,content FROM messages WHERE chat_id=? AND user_id=? AND created>=? ORDER BY created DESC LIMIT 32")
+    const history = db.prepare("SELECT id,role,content FROM messages WHERE chat_id=? AND user_id=? AND created>=? ORDER BY created DESC, rowid DESC LIMIT 32")
       .all(chat.id, req.user.id, now() - WEEK).reverse();
     const conversationHistory = compactConversation(history, prompt);
     const codeContinuity = referencedCodeContext(history, prompt);
