@@ -46,6 +46,7 @@ function command(job) {
   const root=location(job.id),folder=workspace(job.id);
   return [
     "set -euo pipefail",
+    'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"',
     "command -v openhands >/dev/null || { echo 'OpenHands is not installed in Ubuntu WSL. Run SETUP-OPENHANDS-LOCAL.ps1.' >&2; exit 127; }",
     "cd \"$(wslpath -u "+sh(folder)+")\"",
     "export LLM_API_KEY=local-ollama",
