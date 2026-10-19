@@ -67,6 +67,10 @@ if errorlevel 1 (
     )
   )
 )
+if exist "scripts\ensure-builder-model.ps1" (
+  echo [Builder] Checking dedicated local coding model context...
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\ensure-builder-model.ps1"
+)
 echo OpenHands is run on demand when you click Software Builder.
 echo.
 echo [3/4] Building Junior AI frontend...
