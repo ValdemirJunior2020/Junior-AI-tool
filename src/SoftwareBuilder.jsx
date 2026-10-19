@@ -15,7 +15,7 @@ export default function SoftwareBuilder() {
     const [s,p]=await Promise.all([api("/status"),api("/projects")]);
     setStatus(s);setProjects(p.projects||[]);
   }
-  useEffect(()=>{reload().catch(e=>setError(e.message));},[]);
+  useEffect(()=>{reload().catch(e=>setError(e.message)); const interval=setInterval(()=>reload().catch(()=>{}),5000);return ()=>clearInterval(interval);},[]);
   useEffect(()=>{
     if(!active)return;
     let disposed=false;
@@ -49,12 +49,13 @@ export default function SoftwareBuilder() {
       <h1>Software Builder</h1>
       <p>Describe a small application. Local OpenHands creates files, runs its coding workflow and packages the project into a ZIP.</p>
     </div>
-    <div className="builder-note"><ShieldCheck size={20}/><span><strong>Administrator • local computer only.</strong> This feature runs an autonomous coding agent that can execute commands. Only submit trusted tasks. Review generated code before running or distributing it. An agent claiming tests passed is not independent validation.</span></div>
+    <div className="builder-note"><ShieldCheck size={20}/><span><strong>Available to signed-in users on this computer.</strong> This feature runs an autonomous coding agent that can execute commands. Only submit trusted tasks. Review generated code before running or distributing it. An agent claiming tests passed is not independent validation.</span></div>
     {status&&<div className="builder-status">
       <span className={"builder-dot "+(status.enabled?"online":"offline")}/>
       <div><b>{status.enabled?"Builder configured":"Setup required"}</b><small>OpenHands + local Ollama • {status.model} • No paid API</small></div>
       <button type="button" className="secondary" onClick={()=>{setBusy(true);reload().catch(e=>setError(e.message)).finally(()=>setBusy(false));}} disabled={busy}><RefreshCw size={15}/> Refresh</button>
     </div>}
+    {status&&<p className="builder-small">Waiting: {status.waiting||0} • Running: {status.running||0} • Up to 45 minutes per build. Waiting times are estimates, not guaranteed.</p>}
     {status&&!status.enabled&&<div className="builder-setup"><b>OpenHands is not enabled on this PC.</b><p>Install Ubuntu WSL, Python 3.12, uv and OpenHands with the repository's <code>SETUP-OPENHANDS-LOCAL.ps1</code>. It will be enabled only after the local setup passes. Your original one-BAT launcher is preserved.</p></div>}
     {status?.configurationError&&<div className="builder-setup">{status.configurationError}</div>}
     {error&&<div className="builder-error" role="alert"><AlertCircle size={17}/>{error}</div>}
@@ -74,6 +75,8 @@ export default function SoftwareBuilder() {
           <div className="builder-project-title"><FolderArchive size={20}/><div><strong>{p.name}</strong><small>{new Date(p.created).toLocaleString()} • {p.model}</small></div></div>
           <span className={"builder-state "+p.state}>{p.state==="ready"?<CheckCircle2 size={15}/>:p.state==="running"?<Loader2 className="spin" size={15}/>:null}{p.state}</span>
         </div>
+        {p.state==="queued"&&<p className="builder-queue">In queue: position {p.queuePosition||"pending"} • Estimated wait: up to {p.estimatedWaitMinutes??45} minutes</p>}
+        {p.state==="running"&&<p className="builder-queue">Generating your software • Maximum 45 minutes</p>}
         {p.error&&<p className="builder-project-error">{p.error}</p>}
         {p.log?.length>0&&<details className="builder-logs" open={["running","failed","interrupted"].includes(p.state)}>
           <summary>OpenHands activity ({p.log.length} updates)</summary>
