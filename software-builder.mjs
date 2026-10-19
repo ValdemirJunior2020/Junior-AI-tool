@@ -13,7 +13,8 @@ const running=new Map();
 let activeJob=null;
 const pending=[];
 let queueDraining=false;
-const LIMIT_MS=45*60*1000;
+// No fixed build duration. Stop only a truly stalled agent (2h without output).
+const STALL_MS=2*60*60*1000;
 const MAX_QUEUE=12;
 const ID=/^[a-f0-9]{16}$/;
 const modelName=()=>/^[a-zA-Z0-9_./:-]{1,100}$/.test(process.env.OPENHANDS_MODEL||"qwen3.5:9b") ? (process.env.OPENHANDS_MODEL||"qwen3.5:9b") : "qwen3.5:9b";
@@ -35,7 +36,7 @@ const location=id=>path.join(ROOT,id);
 const manifest=id=>path.join(location(id),"status.json");
 const workspace=id=>path.join(location(id),"project");
 async function save(job){
-  const data={id:job.id,name:job.name,created:job.created,updated:Date.now(),state:job.state,owner:job.owner,model:job.model,error:job.error||"",log:(job.log||[]).slice(-45)};
+  const data={id:job.id,name:job.name,created:job.created,started:job.started||null,finished:job.finished||null,updated:Date.now(),state:job.state,owner:job.owner,model:job.model,error:job.error||"",log:(job.log||[]).slice(-45)};
   const dest=manifest(job.id);await mkdir(location(job.id),{recursive:true});
   await writeFile(dest+".tmp",JSON.stringify(data,null,2));await rename(dest+".tmp",dest);
 }
@@ -79,12 +80,13 @@ function append(job,line){
   job.log=job.log.slice(-45);
 }
 async function execute(job,userId) {
-  job.state="running";await save(job);
+  job.state="running";job.started=Date.now();await save(job);
   const args=["--distribution","Ubuntu","--","bash","-lc",command(job)];
   const child=spawn("wsl.exe",args,{windowsHide:true,stdio:["ignore","pipe","pipe"],shell:false,env:process.env});
   running.set(job.id,child);
-  let partial="",bytes=0;
+  let partial="",bytes=0,lastOutputAt=Date.now();
   const onData=chunk=>{
+    lastOutputAt=Date.now();
     bytes+=chunk.length;
     if(bytes>3*1024*1024) return; // Avoid unbounded event output.
     partial+=chunk.toString("utf8");
@@ -92,12 +94,14 @@ async function execute(job,userId) {
     for(const line of lines) append(job,line);
   };
   child.stdout.on("data",onData);child.stderr.on("data",onData);
-  let timedOut=false;
-  const timeout=setTimeout(()=>{timedOut=true;child.kill();},LIMIT_MS);
+  let stalled=false;
+  const watchdog=setInterval(()=>{
+    if(Date.now()-lastOutputAt>=STALL_MS){stalled=true;append(job,"OpenHands produced no output for 2 hours. Stopping stalled process so the shared queue can continue.");child.kill();}
+  },60000);
   try{
     const exitCode=await new Promise((resolve,reject)=>{child.once("error",reject);child.once("close",resolve);});
     if(partial.trim()) append(job,partial);
-    if(timedOut) throw Error("The 45-minute build limit was reached. Existing project files were preserved.");
+    if(stalled) throw Error("OpenHands stopped after two hours without output. No total build duration limit is imposed; existing files are preserved.");
     if(exitCode!==0) throw Error("OpenHands exited with code "+exitCode+". Check the activity log and WSL/Ollama setup.");
     const files=await collectProjectFiles(workspace(job.id));
     if(!files.length) throw Error("OpenHands completed without writing any files. The selected local model may not be using terminal tools correctly. Try a tool-capable model and first test: create hello.py with print('ok').");
@@ -107,15 +111,15 @@ async function execute(job,userId) {
     job.state="failed";job.error=safeText(e.message||String(e),230);
     append(job,job.error);audit(userId,"software_builder_failed",job.id);
   }finally{
-    clearTimeout(timeout);running.delete(job.id);
+    clearInterval(watchdog);job.finished=Date.now();running.delete(job.id);
     await save(job).catch(e=>console.error("[Builder] Could not persist job:",e.message));
   }
 }
 function queueInfo(job) {
   const position=job.state==="running"?0:pending.findIndex(p=>p.id===job.id)+1;
   return {...job,queuePosition:position>0?position:0,
-    estimatedWaitMinutes:position>0 ? (position-1+(running.size?1:0))*45 : 0,
-    maxBuildMinutes:45};
+    elapsedSeconds:Math.max(0,Math.floor((Date.now()-(job.state==="running"?(job.started||job.created):job.created))/1000)),
+    estimatedWaitMinutes:null,maxBuildMinutes:null};
 }
 async function drainQueue(){
   if(queueDraining)return;
@@ -144,7 +148,7 @@ export async function cleanupBuilder(cutoff){
 builderRouter.get("/status",async(_req,res)=>{
   let model=modelName(),configurationError="";
   try{ollamaEndpoint();}catch(e){configurationError=e.message;}
-  res.json({enabled:enabled(),local:true,running:running.size,waiting:pending.length,maxBuildMinutes:45,model,configurationError,workspace:"Local Windows PC / Ubuntu WSL",engine:"OpenHands CLI + Ollama"});
+  res.json({enabled:enabled(),local:true,running:running.size,waiting:pending.length,maxBuildMinutes:null,model,configurationError,workspace:"Local Windows PC / Ubuntu WSL",engine:"OpenHands CLI + Ollama"});
 });
 builderRouter.get("/projects",async(req,res)=>{
   const entries=await readdir(ROOT,{withFileTypes:true}).catch(()=>[]);
@@ -190,7 +194,7 @@ builderRouter.post("/projects",async(req,res)=>{
     await writeFile(path.join(location(job.id),"task.md"),task,"utf8");
     await save(job);audit(req.user.id,"software_builder_started",job.id);
     pending.push(job);
-    res.status(202).json({id:job.id,state:job.state,queuePosition:pending.length,estimatedWaitMinutes:(pending.length-1)*45+(running.size?45:0)});
+    res.status(202).json({id:job.id,state:job.state,queuePosition:pending.length,estimatedWaitMinutes:null});
     void drainQueue();
   }catch(e){
     if(!res.headersSent) res.status(500).json({error:"Unable to initialize the project safely."});
