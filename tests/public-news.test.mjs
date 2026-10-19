@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { wantsFreshNews, newsSearchQuery, parseNewsFeed, searchPublicNews, newsEvidence } from "../public-news.mjs";
+import { wantsFreshNews, newsSearchQuery, parseNewsFeed, searchPublicNews, newsEvidence, newsSourcesFooter } from "../public-news.mjs";
 
 test("triggers research for recent Brazilian presidential debate reactions", () => {
   const q="oi, como esta a reacao do povo no Brasil depois do debate para presidente na tv band aconteceu?";
@@ -41,4 +41,21 @@ test("non-RSS response is rejected instead of passing hallucination bait to the 
  await assert.rejects(searchPublicNews("notícias de economia hoje",{
    fetcher:async()=>({ok:true,headers:{get:()=>null},text:async()=>"<html>no news</html>"})
  }),/Invalid news feed/);
+});
+
+test("news footer has short source labels, dates and a clear evidence limit", () => {
+ const sources = Array.from({length:7}, (_,i) => ({
+   title:"Headline "+(i+1),
+   source:"Publisher "+(i+1),
+   published:"2026-10-19T12:00:00.000Z",
+   url:"https://news.google.com/rss/articles/"+"A".repeat(500)+i
+ }));
+ const footer=newsSourcesFooter(sources, "pt-BR");
+ assert.match(footer,/### 📰 Fontes consultadas/);
+ assert.match(footer,/\[Publisher 1\]/);
+ assert.match(footer,/19\/10\/2026/);
+ assert.match(footer,/Somente manchetes/);
+ assert.match(footer,/Outras manchetes encontradas: 2/);
+ assert.equal((footer.match(/^- \*\*\[/gm)||[]).length,5);
+ assert.ok(!footer.includes("Headline 1"));
 });
