@@ -120,6 +120,16 @@ async function processChatJob(job) {
       job.result = { chatId: chat.id, answer, imageStudioAvailable: imageAccess.enabled && imageAccess.online };
       return;
     }
+    const whisperCli = recognizeWhisperCliRequest(prompt);
+    if (whisperCli) {
+      const answer = verifiedWhisperAnswer(whisperCli, locale);
+      db.transaction(() => {
+        db.prepare("INSERT INTO messages VALUES (?,?,?,?,?,?)").run(newId(), chat.id, req.user.id, "user", prompt, now());
+        db.prepare("INSERT INTO messages VALUES (?,?,?,?,?,?)").run(newId(), chat.id, req.user.id, "assistant", answer, now());
+      })();
+      job.result = { chatId: chat.id, answer };
+      return;
+    }
     // Recent conversation + relevant prior user messages, all scoped to this account and seven days.
     const history = db.prepare("SELECT id,role,content FROM messages WHERE chat_id=? AND user_id=? AND created>=? ORDER BY created DESC LIMIT 12")
       .all(chat.id, req.user.id, now() - WEEK).reverse();
