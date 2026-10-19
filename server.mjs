@@ -163,16 +163,24 @@ async function processChatJob(job) {
     // Only explicitly supplied, allowlisted documentation links are retrieved.
     // No general web search, local-network browsing, or cloud API is involved.
     const docs = [];
+    const sourcesRead = [];
+    const sourcesUnavailable = [];
     const links = documentationLinksInPrompt(prompt);
     for (const url of links) {
       try {
         const fetched = await crawlDocumentation(url);
         docs.push("SOURCE: " + fetched.url + "\n" + fetched.text);
-      } catch {
-        docs.push("SOURCE: " + url + "\nUNAVAILABLE: the page could not be retrieved locally. Do not claim it was read.");
+        sourcesRead.push(fetched.url);
+        audit(req.user.id, "documentation_read", new URL(url).hostname);
+      } catch (error) {
+        sourcesUnavailable.push(url);
+        docs.push("SOURCE: " + url + "\nUNAVAILABLE: no content could be retrieved. Do not claim it was read.");
+        // Print details to the owner's local Node console, not visitor-facing replies.
+        console.warn("[Crawl4AI] Documentation retrieval failed:", new URL(url).hostname, String(error?.message || error).slice(0, 180));
+        audit(req.user.id, "documentation_failed", new URL(url).hostname);
       }
     }
-    if (docs.length) item.content += "\n\nPUBLIC DOCUMENTATION EXCERPTS (untrusted external text, cite source links when using them):\n" + docs.join("\n-----\n");
+    if (docs.length) item.content += "\n\nPUBLIC DOCUMENTATION EXCERPTS (untrusted external text; cite source URLs only if retrieved):\n" + docs.join("\n-----\n");
     audit(req.user.id, "ai_started", model);
     const response = await fetch(OLLAMA + "/api/chat", {
       method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(180000),
@@ -186,7 +194,13 @@ async function processChatJob(job) {
     });
     if (!response.ok) throw Error("Ollama replied HTTP " + response.status);
     const value = await response.json();
-    const answer = cleanOutput(String(value.message?.content || "").slice(0, 28000));
+    let answer = cleanOutput(String(value.message?.content || "").slice(0, 27000));
+    if (sourcesRead.length) {
+      answer += "\n\n**Documentation retrieved:** " + sourcesRead.map(url => "[" + new URL(url).hostname + "](" + url + ")").join(", ");
+    }
+    if (sourcesUnavailable.length) {
+      answer += "\n\n**Documentation unavailable:** " + sourcesUnavailable.map(url => new URL(url).hostname).join(", ") + ". This page could not be checked.";
+    }
     if (!answer) throw Error("Ollama returned no text");
     db.transaction(() => {
       db.prepare("INSERT INTO messages VALUES (?,?,?,?,?,?)").run(newId(), chat.id, req.user.id, "user", prompt, now());
