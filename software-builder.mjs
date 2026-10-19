@@ -159,7 +159,6 @@ builderRouter.get("/projects/:id",async(req,res)=>{
   const active=running.has(j.id)&&activeJob?.id===j.id?activeJob:null;
   res.json({project:queueInfo(active?{...j,state:active.state,log:active.log}:j)});
 });
-let inFlight=null,activeJob=null;
 builderRouter.post("/projects",async(req,res)=>{
   if(!enabled()) return res.status(503).json({error:"Software Builder is disabled. Complete the local OpenHands setup and enable it in .env."});
   if(pending.length>=MAX_QUEUE)return res.status(429).json({error:"The software build queue is full. Please try later."});
