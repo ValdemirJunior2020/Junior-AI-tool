@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState, useSyncExternalStore } from "react";
 import ReactMarkdown from "react-markdown";
 import hljs from "highlight.js/lib/core";
 import javascript from "highlight.js/lib/languages/javascript";
@@ -19,7 +19,8 @@ import ruby from "highlight.js/lib/languages/ruby";
 import php from "highlight.js/lib/languages/php";
 import yaml from "highlight.js/lib/languages/yaml";
 import markdown from "highlight.js/lib/languages/markdown";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, WrapText, ListOrdered, ChevronDown, ChevronUp, Minus, Plus } from "lucide-react";
+import { CODE_SETTINGS_DEFAULTS, normalizeCodeSettings, splitHighlightedLines } from "../code-display.mjs";
 import "highlight.js/styles/atom-one-dark.css";
 
 const LANGUAGES = {
@@ -62,12 +63,56 @@ export function highlightSnippet(text, language = "") {
   }
 }
 
+// Display preferences contain no chat content and are saved only in this browser.
+// The tiny store keeps preferences synchronized across old and new code blocks.
+const DISPLAY_KEY = "junior-ai-code-display-v1";
+const listeners = new Set();
+let displayPreferences = null;
+
+function readPreferences() {
+  if (!displayPreferences) {
+    let saved = null;
+    try {
+      if (typeof window !== "undefined") saved = JSON.parse(window.localStorage.getItem(DISPLAY_KEY) || "null");
+    } catch {}
+    displayPreferences = normalizeCodeSettings(saved);
+  }
+  return displayPreferences;
+}
+function subscribePreferences(listener) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+function savePreferences(partial) {
+  displayPreferences = normalizeCodeSettings({ ...readPreferences(), ...partial });
+  try {
+    if (typeof window !== "undefined") window.localStorage.setItem(DISPLAY_KEY, JSON.stringify(displayPreferences));
+  } catch {}
+  listeners.forEach(listener => listener());
+}
+const serverPreferences = () => CODE_SETTINGS_DEFAULTS;
+function useCodePreferences() {
+  return useSyncExternalStore(subscribePreferences, readPreferences, serverPreferences);
+}
+
+const UI = {
+  "pt-BR": {copy:"Copiar",copied:"Copiado",wrap:"Quebrar linhas",numbers:"Números de linha",
+    smaller:"Diminuir fonte",larger:"Aumentar fonte",collapse:"Recolher código",expand:"Expandir código",size:"Fonte"},
+  "es-ES": {copy:"Copiar",copied:"Copiado",wrap:"Ajustar líneas",numbers:"Números de línea",
+    smaller:"Reducir letra",larger:"Aumentar letra",collapse:"Contraer código",expand:"Expandir código",size:"Letra"},
+  en: {copy:"Copy",copied:"Copied",wrap:"Wrap lines",numbers:"Line numbers",
+    smaller:"Smaller font",larger:"Larger font",collapse:"Collapse code",expand:"Expand code",size:"Font"}
+};
+
 function CodeBlock({ code, language, locale = "en" }) {
   const [copied, setCopied] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const settings = useCodePreferences();
+  const labels = UI[locale] || UI.en;
   const lang = languageForCode(language);
-  const highlighted = highlightSnippet(code, language);
-  const copyLabel = locale === "pt-BR" ? "Copiar" : locale === "es-ES" ? "Copiar" : "Copy";
-  const copiedLabel = locale === "pt-BR" ? "Copiado" : locale === "es-ES" ? "Copiado" : "Copied";
+  const highlighted = useMemo(() => highlightSnippet(code, language), [code, language]);
+  const lines = useMemo(() => splitHighlightedLines(highlighted), [highlighted]);
+
   async function copyCode() {
     try {
       await navigator.clipboard.writeText(code);
@@ -76,16 +121,56 @@ function CodeBlock({ code, language, locale = "en" }) {
       setCopied(false);
     }
   }
-  return <div className="junior-code-block">
+
+  return <div className={"junior-code-block" + (collapsed ? " is-collapsed" : "")}
+    style={{ "--junior-code-font-size": settings.fontSize + "px" }}>
     <div className="junior-code-bar">
       <span className="junior-code-lang">{lang === "plaintext" ? "CODE" : lang.toUpperCase()}</span>
-      <button type="button" className="junior-code-copy" onClick={copyCode}
-        aria-label={copied ? copiedLabel : copyLabel} title={copied ? copiedLabel : copyLabel}>
-        {copied ? <Check size={14}/> : <Copy size={14}/>} {copied ? copiedLabel : copyLabel}
-      </button>
+      <div className="junior-code-controls">
+        <button type="button" className={"junior-code-option" + (settings.wrap ? " is-on" : "")}
+          onClick={() => savePreferences({wrap: !settings.wrap})}
+          aria-pressed={settings.wrap} aria-label={labels.wrap} title={labels.wrap}>
+          <WrapText size={14}/><span className="junior-code-option-label">{labels.wrap}</span>
+        </button>
+        <button type="button" className={"junior-code-option" + (settings.lineNumbers ? " is-on" : "")}
+          onClick={() => savePreferences({lineNumbers: !settings.lineNumbers})}
+          aria-pressed={settings.lineNumbers} aria-label={labels.numbers} title={labels.numbers}>
+          <ListOrdered size={14}/><span className="junior-code-option-label">{labels.numbers}</span>
+        </button>
+        <span className="junior-code-size-control" role="group" aria-label={labels.size}>
+          <button type="button" onClick={() => savePreferences({fontSize: settings.fontSize - 1})}
+            disabled={settings.fontSize <= 12} aria-label={labels.smaller} title={labels.smaller}>
+            <Minus size={13}/>
+          </button>
+          <span className="junior-code-size-label" aria-live="polite">{settings.fontSize}px</span>
+          <button type="button" onClick={() => savePreferences({fontSize: settings.fontSize + 1})}
+            disabled={settings.fontSize >= 22} aria-label={labels.larger} title={labels.larger}>
+            <Plus size={13}/>
+          </button>
+        </span>
+        <button type="button" className="junior-code-option" onClick={() => setCollapsed(value => !value)}
+          aria-expanded={!collapsed} aria-label={collapsed ? labels.expand : labels.collapse}
+          title={collapsed ? labels.expand : labels.collapse}>
+          {collapsed ? <ChevronDown size={15}/> : <ChevronUp size={15}/>}
+          <span className="junior-code-option-label">{collapsed ? labels.expand : labels.collapse}</span>
+        </button>
+        <button type="button" className="junior-code-copy" onClick={copyCode}
+          aria-label={copied ? labels.copied : labels.copy} title={copied ? labels.copied : labels.copy}>
+          {copied ? <Check size={14}/> : <Copy size={14}/>} {copied ? labels.copied : labels.copy}
+        </button>
+      </div>
     </div>
-    <pre className="junior-code-pre"><code className={"hljs" + (lang !== "plaintext" ? " language-" + lang : "")}
-      dangerouslySetInnerHTML={{ __html: highlighted }}/></pre>
+    {!collapsed && <pre className="junior-code-pre"><code
+      className={"hljs" + (lang !== "plaintext" ? " language-" + lang : "")}>
+      {lines.map((html, index) =>
+        <span key={index} className={"junior-code-row" +
+          (settings.lineNumbers ? " has-numbers" : "") + (settings.wrap ? " wraps" : "")}>
+          {settings.lineNumbers &&
+            <span className="junior-code-number" aria-hidden="true">{index + 1}</span>}
+          <span className="junior-code-source" dangerouslySetInnerHTML={{__html: html || "&#8203;"}}/>
+        </span>
+      )}
+    </code></pre>}
   </div>;
 }
 
