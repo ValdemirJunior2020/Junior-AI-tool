@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
+import { spanish } from "./i18n-es.js";
 
 const BRAZIL_FLAG = "https://img.freeflagicons.com/thumb/round_icon/brazil/brazil_640.png";
 const USA_FLAG = "https://img.freeflagicons.com/thumb/round_icon/united_states_of_america/united_states_of_america_640.png";
+const SPAIN_FLAG = "https://img.icons8.com/color/1200/spain-circular--v2.jpg";
 const translations = {
   "Sign in": "Entrar", "Create account": "Criar conta", "Account access": "Acesso à conta",
   "Create your account": "Crie sua conta", "Reset your password": "Redefina sua senha",
@@ -84,22 +86,34 @@ const translations = {
   "No external AI API connected": "Sem API externa de IA",
   "LIVE OPERATIONS": "ATIVIDADES RECENTES",
   "Request failed": "Não foi possível concluir o pedido",
-  "Junior AI is getting ready. Please try again soon.": "Junior AI está se preparando. Tente novamente em instantes."
+  "Junior AI is getting ready. Please try again soon.": "Junior AI está se preparando. Tente novamente em instantes.",
+  "Remember me": "Lembrar de mim",
+  "Keep me signed in for 30 days": "Manter minha sessão por 30 dias",
+  "Welcome to Junior AI! Your account is ready.": "Bem-vindo ao Junior AI! Sua conta está pronta."
 };
+const availableLanguages = new Set(["en", "pt-BR", "es-ES"]);
 let currentLanguage = "en";
-try { currentLanguage = localStorage.getItem("junior-language") === "pt-BR" ? "pt-BR" : "en"; } catch {}
-export const translate = (key, language) => language === "pt-BR" ? (translations[key] || key) : key;
+try {
+  const saved = localStorage.getItem("junior-language");
+  currentLanguage = availableLanguages.has(saved) ? saved : "en";
+} catch {}
+export const translate = (key, language) =>
+  language === "pt-BR" ? (translations[key] || key)
+  : language === "es-ES" ? (spanish[key] || key)
+  : key;
 export function useJuniorLanguage() {
   const [language, setLanguage] = useState(currentLanguage);
   useEffect(() => {
+    document.documentElement.lang = currentLanguage;
     const handler = () => setLanguage(currentLanguage);
     window.addEventListener("junior-language-change", handler);
     return () => window.removeEventListener("junior-language-change", handler);
   }, []);
   function changeLanguage(next) {
+    if (!availableLanguages.has(next)) return;
     currentLanguage = next;
     try { localStorage.setItem("junior-language", next); } catch {}
-    document.documentElement.lang = next === "pt-BR" ? "pt-BR" : "en";
+    document.documentElement.lang = next;
     window.dispatchEvent(new Event("junior-language-change"));
   }
   return { language, setLanguage: changeLanguage, t: key => translate(key, language) };
@@ -113,6 +127,10 @@ export function LanguageFlags({ language, setLanguage }) {
     <button type="button" className={"language-flag " + (language === "en" ? "active" : "")}
       onClick={() => setLanguage("en")} aria-pressed={language === "en"} title="English (United States)" aria-label="English">
       <img src={USA_FLAG} alt="United States" width="28" height="28"/>
+    </button>
+    <button type="button" className={"language-flag " + (language === "es-ES" ? "active" : "")}
+      onClick={() => setLanguage("es-ES")} aria-pressed={language === "es-ES"} title="Español (España)" aria-label="Español">
+      <img src={SPAIN_FLAG} alt="España" width="28" height="28"/>
     </button>
   </div>;
 }
