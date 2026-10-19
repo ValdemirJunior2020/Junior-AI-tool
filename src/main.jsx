@@ -54,7 +54,7 @@ function Auth({ onLogin }) {
         await post("/auth/reset/confirm", { token: resetToken, password });
         setMessage(t("Password changed. Sign in again.")); setMode("login");
       }
-    } catch (err) { setMessage(err.message); }
+    } catch (err) { setMessage(t(err.message || "Request failed")); }
     finally { setLoading(false); }
   }
   return <div className="auth-page">
