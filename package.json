@@ -10,7 +10,7 @@
     "dev": "concurrently \"node --watch server.mjs\" \"vite --host 127.0.0.1\"",
     "build": "vite build",
     "start": "node server.mjs",
-    "test": "node --test",
+    "test": "node scripts/run-unit-tests.mjs",
     "admin": "node scripts/create-admin.mjs",
     "admin:env": "node scripts/create-admin.mjs --from-env",
     "fooocus:setup": "node scripts/setup-fooocus-amd.mjs",

@@ -1,0 +1,22 @@
+name: Software Builder
+on:
+  push:
+  pull_request:
+jobs:
+  builder-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Validate new builder source
+        run: |
+          node --check software-builder.mjs
+          node --check software-builder-zip.mjs
+          node --test tests/software-builder.test.mjs
+      - name: Build frontend
+        run: npm run build
+      - name: Build Netlify frontend
+        run: npm run build:netlify
