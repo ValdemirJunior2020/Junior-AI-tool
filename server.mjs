@@ -52,8 +52,8 @@ app.use((req, res, next) => {
 });
 app.get("/api/health", (_req, res) => res.json({ ok: true, runtime: "local", retentionDays: 7, emailConfigured: mailConfigured }));
 app.use("/api/auth", authRouter);
-// Software Builder may execute code: super-admin only and local-browser only inside builderRouter.
-app.use("/api/builder", requireUser, requireAdmin, builderRouter);
+// Software Builder remains restricted to the local PC until sandboxed remote execution is available.
+app.use("/api/builder", requireUser, builderRouter);
 const workLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 16, standardHeaders: "draft-7", legacyHeaders: false, keyGenerator: req => req.user.id });
 app.get("/api/models", requireUser, async (_req, res) => {
   try {
