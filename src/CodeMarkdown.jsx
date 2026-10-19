@@ -47,13 +47,18 @@ export function languageForCode(info = "") {
 export function highlightSnippet(text, language = "") {
   const content = String(text);
   const chosen = languageForCode(language);
-  if (chosen === "plaintext" || content.length > 30000) return hljs.escapeHTML
-    ? hljs.escapeHTML(content)
-    : content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const escape = value => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  if (content.length > 30000) return escape(content);
   try {
+    if (chosen === "plaintext") {
+      // Some older Ollama replies omit a language tag. Colorize multi-line
+      // snippets conservatively, without changing the source or executing it.
+      return content.includes("\n") && content.length < 10000
+        ? hljs.highlightAuto(content).value : escape(content);
+    }
     return hljs.highlight(content, { language: chosen, ignoreIllegals: true }).value;
   } catch {
-    return content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return escape(content);
   }
 }
 
