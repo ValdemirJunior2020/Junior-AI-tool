@@ -9,7 +9,7 @@ export function recognizeWhisperCliRequest(value) {
   if (!file) return null;
   const input = file[1].trim();
   if (/[\r\n"'<>|?*]/.test(input)) return null;
-  const model = (text.match(/\b(tiny|base|small|medium|large-v[123]|large|turbo)\b/i) || ["","base"])[0].toLowerCase();
+  const model = (text.match(/\b(tiny|base|small|medium|large-v[123]|large|turbo)\b/i) || ["base"])[0].toLowerCase();
   const language = /\b(portuguese|portugu[eê]s)\b/i.test(text) ? "Portuguese" :
     /\b(spanish|espa[nñ]ol)\b/i.test(text) ? "Spanish" :
     /\b(english|ingl[eê]s)\b/i.test(text) ? "English" : "";
