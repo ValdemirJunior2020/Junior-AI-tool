@@ -24,6 +24,7 @@ export const spanish = {
   "Provide a valid email and a 12–128 character password": "Introduce un correo válido y una contraseña de entre 12 y 128 caracteres",
   "Use a 12–128 character password": "Usa una contraseña de entre 12 y 128 caracteres",
   "Use a 12–128 character new password": "Usa una contraseña nueva de entre 12 y 128 caracteres",
+  "Open image studio": "Abrir estudio de imágenes",
   "Remember me": "Recordarme",
   "Keep me signed in for 30 days": "Mantener la sesión durante 30 días",
   "Welcome to Junior AI! Your account is ready.": "¡Bienvenido a Junior AI! Tu cuenta está lista.",
