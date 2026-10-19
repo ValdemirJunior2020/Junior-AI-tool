@@ -79,6 +79,14 @@ This is not hacker-proof. The Fooocus user-interface automation is experimental 
 
 Store local files on an encrypted drive. Prevent cloud sync and unexpired backups from defeating seven-day retention. Do not use this code to promise total deletion from external backups. The UI reports that user content is removed after seven days; profile information remains until account deletion. Display-name editing is supported. Email-address editing is not yet supported and requires re-verification.
 
+## Public news research (no API key)
+
+- Recent-event questions trigger a lightweight, on-demand Google News RSS search from the local Node backend, with dated publisher/headline leads and clickable links.
+- It does not require Google Cloud credentials, an API key, or an additional always-running service.
+- News headlines are not treated as verified article content, scientific sampling, representative polling or the opinion of an entire population. Cite dated reports and explain uncertainties.
+- If the free RSS source cannot be reached or returns no suitable recent articles, Junior AI must report the limitation rather than invent reactions or recent events.
+- The source is not guaranteed to be available from every network. It is distinct from Crawl4AI, which currently handles explicit allowlisted documentation links.
+
 ## Local Crawl4AI documentation research
 
 - Junior AI reads up to two **explicit** HTTPS documentation links supplied in a chat message, on demand. The supported hosts include docs.python.org, developer.mozilla.org, react.dev, docs.github.com, learn.microsoft.com, docs.docker.com and docs.crawl4ai.com.
