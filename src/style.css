@@ -101,3 +101,40 @@
 .auth-card{overflow-wrap:anywhere}
 @media(max-width:760px){.topbar .language-flags{gap:2px}.topbar .language-flag{height:31px;width:31px;padding:2px}.topbar .language-flag img{width:23px;height:23px}}
 @media(max-width:400px){.auth-header{gap:8px}.topbar .page-name{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topbar .model-ready{display:none}}
+
+
+/* Simplified multilingual sign-in, remembered sessions and mobile keyboard usability */
+.auth-page{width:100%;max-width:100%;min-height:100dvh;overflow-x:clip;overflow-y:auto;overscroll-behavior-y:contain}
+.auth-header{max-width:100%;min-width:0;justify-content:center;gap:10px}
+.auth-header .brand{white-space:nowrap}
+.auth-header .language-flags{flex-wrap:nowrap}
+.auth-card{width:min(440px,100%);min-width:0;max-width:100%;overflow-wrap:break-word}
+.auth-card .auth-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+.auth-card .auth-tabs button{min-width:0;white-space:normal;line-height:1.3;overflow-wrap:anywhere}
+.auth-card input[type="email"],.auth-card input[type="password"],.auth-card input[type="text"]{display:block;width:100%;min-width:0;max-width:100%;font-size:16px}
+.auth-card .remember-choice{display:flex;align-items:center;gap:11px;width:100%;min-width:0;margin:0 0 20px;cursor:pointer;color:#444c68;font-size:13px;line-height:1.3}
+.auth-card .remember-choice input[type="checkbox"]{display:block;appearance:auto;flex:none;width:19px;height:19px;min-width:19px;padding:0;margin:0;accent-color:#6658bf;cursor:pointer}
+.auth-card .remember-choice span{min-width:0;font-weight:700}
+.auth-card .remember-choice small{display:block;margin-top:3px;color:#858ba1;font-size:11px;font-weight:500}
+.auth-card .remember-choice input[type="checkbox"]:focus-visible{outline:2px solid #635acd;outline-offset:3px}
+.auth-card .primary.full{position:relative;z-index:1;min-height:46px}
+@media(max-width:570px){
+  .auth-page{justify-content:flex-start;padding:clamp(16px,4vw,24px) 14px max(24px,env(safe-area-inset-bottom));scroll-padding-bottom:100px}
+  .auth-header{gap:9px;margin-bottom:18px;flex-wrap:nowrap}
+  .auth-header .brand{font-size:clamp(16px,4.5vw,20px);gap:7px}
+  .auth-header .brandmark{width:30px;height:30px}
+  .auth-header .language-flags{gap:2px}
+  .auth-header .language-flag{width:33px;height:33px;padding:2px}
+  .auth-header .language-flag img{width:25px;height:25px}
+  .auth-card{padding:24px 20px 22px;margin-bottom:16px}
+  .auth-card .auth-tabs{gap:4px;margin-bottom:22px}
+  .auth-card .auth-tabs button{font-size:13px;min-height:44px;padding:7px 5px}
+  .auth-card h1{font-size:23px;line-height:1.2;overflow-wrap:anywhere;margin-bottom:21px}
+  .auth-card input[type="email"],.auth-card input[type="password"],.auth-card input[type="text"]{font-size:16px;min-height:46px}
+  .auth-card .primary.full[type="submit"]{position:sticky;bottom:max(10px,env(safe-area-inset-bottom));box-shadow:0 6px 20px #3f49a322}
+  .auth-switch{margin:18px 0 4px;justify-content:center}
+  .auth-switch button{text-align:center;line-height:1.45;white-space:normal}
+}
+@media(max-width:345px){
+  .auth-header{flex-wrap:wrap}
+}
