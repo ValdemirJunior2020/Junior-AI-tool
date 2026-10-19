@@ -17,6 +17,9 @@ jobs:
         shell: pwsh
         run: |
           $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path '.\SETUP-OPENHANDS-LOCAL.ps1').Path, [ref]$null, [ref]$errors) | Out-Null
+          $scripts = @('.\SETUP-OPENHANDS-LOCAL.ps1', '.\scripts\ensure-builder-model.ps1')
+          foreach ($script in $scripts) {
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $script).Path, [ref]$null, [ref]$errors) | Out-Null
+          }
           if ($errors) { $errors | Format-List | Out-String | Write-Host; exit 1 }
           Write-Host 'PowerShell syntax OK.'
