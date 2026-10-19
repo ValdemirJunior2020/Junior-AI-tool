@@ -90,6 +90,7 @@ function App() {
   const [model, setModel] = useState("");
   const [chats, setChats] = useState([]);
   const [chatId, setChatId] = useState("");
+  const chatNavigationVersion = useRef(0);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [files, setFiles] = useState([]);
@@ -172,17 +173,52 @@ function App() {
     if (i.status === "fulfilled") { setImageEnabled(i.value.enabled); setImageOnline(i.value.online); setImageStatus(i.value.note || ""); }
     if (g.status === "fulfilled") setGeneratedImages((g.value.images || []).map(image => image.url));
   }
-  useEffect(() => { if (user) { refresh(); setDisplayName(user.display_name || ""); } }, [user?.id]);
+  // Restore the active conversation only within this browser tab and account.
+  // Only its ID is stored; chat contents remain in the existing local backend.
+  function rememberActiveChat(id) {
+    if (!user?.id) return;
+    try {
+      const key = "junior-ai-active-chat:" + user.id;
+      if (id) sessionStorage.setItem(key, id);
+      else sessionStorage.removeItem(key);
+    } catch {}
+  }
+  useEffect(() => {
+    if (!user) return;
+    refresh();
+    setDisplayName(user.display_name || "");
+    let savedId = "";
+    try { savedId = sessionStorage.getItem("junior-ai-active-chat:" + user.id) || ""; } catch {}
+    if (!/^[a-f0-9]{32}$/i.test(savedId)) return;
+    const version = chatNavigationVersion.current;
+    request("/chats/" + encodeURIComponent(savedId)).then(data => {
+      // Never overwrite a conversation that the user opened after page load.
+      if (chatNavigationVersion.current !== version) return;
+      setChatId(savedId);
+      setMessages(data.messages || []);
+    }).catch(() => {
+      try { sessionStorage.removeItem("junior-ai-active-chat:" + user.id); } catch {}
+    });
+  }, [user?.id]);
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
   useEffect(() => { if (tab === "admin" && user?.role === "admin") refreshAdmin(); }, [tab]);
   const refreshAdmin = async () => { try { setAdmin(await request("/admin/summary")); } catch(e) { setNotice(e.message); } };
   async function openChat(id) {
+    if (busy) { setNotice(language === "pt-BR" ? "Aguarde a resposta antes de trocar de conversa." : "Wait for the response before switching conversations."); return; }
+    const version = ++chatNavigationVersion.current;
     try {
       const data = await request("/chats/" + id);
-      setChatId(id); setMessages(data.messages); setTab("chat"); setChosenFiles([]); setNotice(""); dismissMobileMenu();
+      if (version !== chatNavigationVersion.current) return;
+      setChatId(id); rememberActiveChat(id);
+      setMessages(data.messages); setTab("chat"); setChosenFiles([]); setNotice(""); dismissMobileMenu();
     } catch(e) { setNotice(e.message); }
   }
-  function newChat() { setChatId(""); setMessages([]); setChosenFiles([]); setTab("chat"); setNotice(""); dismissMobileMenu(); }
+  function newChat() {
+    if (busy) { setNotice(language === "pt-BR" ? "Aguarde a resposta antes de iniciar outra conversa." : "Wait for the response before starting another conversation."); return; }
+    chatNavigationVersion.current++;
+    rememberActiveChat("");
+    setChatId(""); setMessages([]); setChosenFiles([]); setTab("chat"); setNotice(""); dismissMobileMenu();
+  }
   async function upload(e) {
     const picked = e.target.files?.[0]; if (!picked) return;
     if (picked.size > 6 * 1024 * 1024) { setNotice("Maximum file size is 6 MB"); return; }
@@ -209,6 +245,7 @@ function App() {
       dismissMobileMenu();
       return;
     }
+    chatNavigationVersion.current++;
     setText(""); setBusy(true); setNotice(""); setQueueStatus("Joining the waiting line...");
     setMessages(old => [...old, { id: "temp-" + Date.now(), role: "user", content: prompt }]);
     try {
@@ -227,7 +264,7 @@ function App() {
       }
       if (!result) throw new Error("The request is taking longer than expected. Please check your conversations before retrying.");
       setMessages(old => [...old, { id: "answer-" + Date.now(), role: "assistant", content: result.answer, imageStudioAvailable: result.imageStudioAvailable === true }]);
-      setChatId(result.chatId); setChosenFiles([]);
+      setChatId(result.chatId); rememberActiveChat(result.chatId); setChosenFiles([]);
       addLog("response_ready", "Local AI");
       const data = await request("/chats"); setChats(data.chats);
     } catch (err) {
@@ -319,7 +356,7 @@ function App() {
     try { await del("/auth/account", { password }); setUser(null); }
     catch (err) { setNotice(err.message); }
   }
-  async function logout() { await post("/auth/logout", {}).catch(() => {}); setUser(null); setChatId(""); setMessages([]); }
+  async function logout() { chatNavigationVersion.current++; rememberActiveChat(""); await post("/auth/logout", {}).catch(() => {}); setUser(null); setChatId(""); setMessages([]); }
   async function adminDelete(target, type) {
     if (!window.confirm("Delete selected " + type + " permanently?")) return;
     try {
