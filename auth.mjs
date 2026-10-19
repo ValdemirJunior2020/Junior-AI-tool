@@ -15,10 +15,17 @@ const mailer = mailConfigured ? nodemailer.createTransport({
 }) : null;
 const normalizeEmail = (input) => safeText(input, 254).toLowerCase();
 const validEmail = (input) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
-function session(res, user) {
+// A regular login uses a browser-session cookie; users can opt into a 30-day cookie.
+const SHORT_SESSION_MS = 12 * 60 * 60 * 1000;
+const REMEMBER_SESSION_MS = 30 * 24 * 60 * 60 * 1000;
+function session(res, user, remember = false) {
   const raw = randomBytes(32).toString("hex");
-  db.prepare("INSERT INTO sessions VALUES (?,?,?)").run(digest(raw), user.id, now() + WEEK);
-  res.cookie("junior_session", raw, { httpOnly: true, secure: publicUrl.startsWith("https:"), sameSite: "lax", path: "/", maxAge: WEEK });
+  const ttl = remember ? REMEMBER_SESSION_MS : SHORT_SESSION_MS;
+  db.prepare("INSERT INTO sessions VALUES (?,?,?)").run(digest(raw), user.id, now() + ttl);
+  res.cookie("junior_session", raw, {
+    httpOnly: true, secure: publicUrl.startsWith("https:"), sameSite: "lax", path: "/",
+    ...(remember ? { maxAge: ttl } : {})
+  });
 }
 export function userFor(req) {
   const raw = req.cookies.junior_session;
@@ -73,7 +80,7 @@ router.post("/login", limit, async (req, res, next) => {
     const u = db.prepare("SELECT * FROM users WHERE email=?").get(normalizeEmail(req.body.email));
     if (!u || !await verifyPassword(String(req.body.password || ""), u.pass)) return res.status(401).json({ error: "Invalid login" });
     // Email verification is optional for this self-hosted installation.
-    session(res, u); audit(u.id, "login"); res.json({ user: { id: u.id, email: u.email, role: u.role, display_name: u.display_name } });
+    session(res, u, req.body.remember === true); audit(u.id, "login"); res.json({ user: { id: u.id, email: u.email, role: u.role, display_name: u.display_name } });
   } catch (e) { next(e); }
 });
 router.post("/logout", requireUser, (req, res) => {
