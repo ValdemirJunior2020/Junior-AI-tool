@@ -41,3 +41,5 @@
 .builder-download{display:inline-flex;align-items:center;gap:8px;background:#e7f4eb;border:1px solid #cce8d5;color:#286646;font-size:12px;font-weight:700;padding:12px 14px;border-radius:10px;margin-top:14px;text-decoration:none}
 .builder-download:hover{background:#d8eddf}
 @media(max-width:760px){.builder-form{padding:14px}.builder-project{padding:13px}.builder-note,.builder-status{padding:12px}.builder-form .primary{width:100%}.builder-status .secondary{padding:9px}}
+
+.builder-queue{font-size:12px;font-weight:650;color:#5268a2;background:#eef2ff;padding:10px;border-radius:8px;margin-top:10px}
