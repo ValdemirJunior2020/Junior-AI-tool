@@ -79,6 +79,12 @@ This is not hacker-proof. The Fooocus user-interface automation is experimental 
 
 Store local files on an encrypted drive. Prevent cloud sync and unexpired backups from defeating seven-day retention. Do not use this code to promise total deletion from external backups. The UI reports that user content is removed after seven days; profile information remains until account deletion. Display-name editing is supported. Email-address editing is not yet supported and requires re-verification.
 
+## Readable code blocks in chat
+
+Junior AI uses a lightweight client-side `highlight.js` renderer to color language-labeled fenced code blocks, plus a copy button that copies the original code unchanged. Unlabeled multiline code fences get conservative automatic language detection. Answers use 15px text and 14px monospaced code. Ollama is instructed to always use language-labeled Markdown code fences for program listings and terminal commands. This feature adds a single npm dependency and does not change the Ollama model, database, user isolation, Fooocus, or the existing one-BAT launcher.
+
+After pulling on Windows, run `npm install` once to add the new dependency. Restart `START-ALL-JUNIOR-AI.bat` afterward.
+
 ## Public news research (no API key)
 
 - Recent-event questions trigger a lightweight, on-demand Google News RSS search from the local Node backend, with dated publisher/headline leads and clickable links.
