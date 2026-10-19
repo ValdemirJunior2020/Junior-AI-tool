@@ -7,6 +7,7 @@ Private, local-first AI assistant with a Gemini-inspired but independently desig
 ## Features
 
 - Local Ollama coding/reasoning chat with installed model selection.
+- **Private smart memory:** SQLite FTS5 finds relevant passages throughout retained text documents and recalls related user messages from the last seven days. No embeddings, model downloads, API keys, or additional services. Each search is scoped to the authenticated account. Index entries are deleted when their source files or conversations expire or are deleted.
 - Upload and analyze XLSX, CSV, PDF with selectable text, DOCX, source code, TXT, Markdown, JSON and images (image analysis needs a vision-enabled local model).
 - Official Fooocus image generation by automating its localhost Gradio interface in local Google Chrome; no API keys or separate Fooocus-API service. Admin-only by default.
 - Signup with email confirmation, login, logout, password changes, password reset via SMTP, profile-name editing, account deletion, and mandatory Super Admin TOTP authentication.
@@ -77,6 +78,15 @@ Pangolin documentation:
 This is not hacker-proof. The Fooocus user-interface automation is experimental and not a security guarantee. Conduct independent penetration testing and verify account isolation, HTTPS, proxy trust, CSRF, quota enforcement, safe image/document moderation, credential stuffing, malware scanning, disk exhaustion, rate limiting, logging and GDPR/privacy obligations. Move document parsing into isolated workers with memory/CPU/zip-bomb limits. Add a robust **local** moderation model for prompts, AI responses, image uploads and generated images, plus human review. The current filters are preliminary. Public services operating on a single GPU also need fair scheduling and resource quotas.
 
 Store local files on an encrypted drive. Prevent cloud sync and unexpired backups from defeating seven-day retention. Do not use this code to promise total deletion from external backups. The UI reports that user content is removed after seven days; profile information remains until account deletion. Display-name editing is supported. Email-address editing is not yet supported and requires re-verification.
+
+## Smart memory (local SQLite FTS5)
+
+- New text uploads are automatically split into overlapping passages and indexed in SQLite. Up to 70,000 saved characters per document are searchable, including passages near the end.
+- Previously uploaded documents still within the seven-day retention window are indexed automatically in the background after Junior AI starts. No extra setup is needed.
+- Chat searches related passages in documents owned by the current user. When text files are explicitly attached, their passages take precedence. Recent and related earlier user messages help with conversation continuity without a second AI call.
+- Deleting an upload, conversation, or account also removes associated search entries; scheduled retention cleanup removes expired content. Other users' content is never searched.
+- Search is keyword-based rather than semantic embeddings: it is light and free but may miss paraphrases. Scanned image-only PDFs still require separate offline OCR.
+- Run `npm test` to test local search behavior, retention filtering, cross-user isolation, and deletion. Netlify builds also validate this module and run the same tests.
 
 ## Data
 
