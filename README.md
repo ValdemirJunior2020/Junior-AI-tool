@@ -119,6 +119,23 @@ After pulling on Windows, run `npm install` once to add the new dependency. Rest
 - Search is keyword-based rather than semantic embeddings: it is light and free but may miss paraphrases. Scanned image-only PDFs still require separate offline OCR.
 - Run `npm test` to test local search behavior, retention filtering, cross-user isolation, and deletion. Netlify builds also validate this module and run the same tests.
 
+
+## Local Software Builder with OpenHands (experimental)
+
+**Status:** OpenHands CLI integration has been added to a separate local-only, super-admin-only Software Builder tab. It is disabled by default until local setup completes. The existing chat, Fooocus, SQLite, .env, and \`START-ALL-JUNIOR-AI.bat\` are preserved. The builder does not run on Netlify; Netlify remains a frontend only.
+
+**Windows prerequisites:** Ubuntu WSL, Python 3.12 installed by uv inside WSL, OpenHands CLI, local Ollama with a coding model, and preferably 30+ GB free disk. To set up from the Windows clone:
+
+1. If Ubuntu is missing, install WSL/Ubuntu with \`wsl --install -d Ubuntu\` from elevated PowerShell, restart Windows if instructed, and complete Ubuntu account initialization.
+2. Ensure Ollama is running locally and the desired model is installed (\`ollama list\`; default \`qwen2.5-coder:14b\`).
+3. Run \`powershell -NoProfile -ExecutionPolicy Bypass -File .\SETUP-OPENHANDS-LOCAL.ps1\` from the repository root. It downloads only free/open-source CLI tooling in Ubuntu, checks WSL access to Ollama, and then changes **only** the Builder settings in the local .env. If connection checks fail, the builder stays disabled.
+4. Restart the **original** \`START-ALL-JUNIOR-AI.bat\`; open http://127.0.0.1:3001 from that same computer, sign in as Super Admin, and use **Software Builder**. Enter a project name and detailed requirements. The agent creates files, attempts builds and tests, and the app makes a ZIP available after successful execution.
+5. Generated project folders are under \`data/software-builder/<id>/project\` and cleaned up after seven days. ZIP creation excludes .env files, local credentials, node_modules, .git, virtual environments, and symlinks. The generated ZIP may still contain unsafe or non-working code; always inspect it.
+
+**Critical security warning:** The current CLI bridge invokes a fully autonomous OpenHands headless process in Ubuntu WSL. Headless mode approves operations automatically. **A workspace directory is NOT a full security sandbox**; WSL may access Windows drives and local files. Do not accept arbitrary untrusted build prompts or expose this endpoint publicly. The app enforces super-admin authentication plus local HTTP host, origin and loopback address restrictions, and disables the feature by default. A future improvement should use a dedicated locked-down container/VM before enabling remote builds. The build task asks the agent to stay inside its workspace, but this is not enforceable OS isolation.
+
+**Reliability:** OpenHands' official CLI has been superseded in favor of newer OpenHands agent tooling; this is a lightweight, inspectable initial integration. Headless exit success and output files do **not** prove an application is bug-free. The agent is asked to run tests and repair failures, but the user must independently validate before installing/distributing. WSL-to-Windows Ollama loopback access depends on Windows/WSL networking configuration; mirrored networking may be required. Coding agents need sufficient context and may be slow on a 16 GB GPU. No cloud API keys are configured or required.
+
 ## Data
 
 Local SQLite database: data/junior.sqlite
