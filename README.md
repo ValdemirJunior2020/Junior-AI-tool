@@ -79,6 +79,15 @@ This is not hacker-proof. The Fooocus user-interface automation is experimental 
 
 Store local files on an encrypted drive. Prevent cloud sync and unexpired backups from defeating seven-day retention. Do not use this code to promise total deletion from external backups. The UI reports that user content is removed after seven days; profile information remains until account deletion. Display-name editing is supported. Email-address editing is not yet supported and requires re-verification.
 
+## Local Crawl4AI documentation research
+
+- Junior AI reads up to two **explicit** HTTPS documentation links supplied in a chat message, on demand. The supported hosts include docs.python.org, developer.mozilla.org, react.dev, docs.github.com, learn.microsoft.com, docs.docker.com and docs.crawl4ai.com.
+- Powered by the existing local Crawl4AI Python installation, invoked only when needed; no cloud API, paid key, Docker service or second model.
+- To set up locally: `py -m pip install crawl4ai` and `crawl4ai-setup`; confirm with `crawl4ai-doctor`. Crawl4AI 0.9.5 was confirmed installed and healthy on the owner's Windows machine on October 19, 2026.
+- Node launches Python directly from the existing one-BAT startup when a research message is processed. You do not need a separate persistent crawler service. If the default `py` launcher uses a different Python, set `CRAWL4AI_PYTHON` in the local .env to the correct Python executable.
+- Only public HTTPS documentation sites from the hard-coded allowlist are supported. Redirects and subrequests to other domains are blocked; localhost, private IPs, credentials and arbitrary sites are not allowed. This is **documentation reading**, not universal web search.
+- External page content is untrusted and never overrides assistant instructions. Failed fetches are disclosed rather than presented as completed research. Responses can cite the documentation link.
+
 ## Smart memory (local SQLite FTS5)
 
 - New text uploads are automatically split into overlapping passages and indexed in SQLite. Up to 70,000 saved characters per document are searchable, including passages near the end.
