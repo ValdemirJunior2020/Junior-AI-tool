@@ -15,6 +15,7 @@ import { assertLocalFooocusUrl, fooocusHealth, generateUsingOfficialFooocus, pur
 import { db, STORE, now, newId, WEEK, safeText, audit, cleanup, eraseFiles } from "./db.mjs";
 import { router as authRouter, requireUser, requireAdmin, mailConfigured } from "./auth.mjs";
 import { SYSTEM_PROMPT, isBlocked, cleanOutput } from "./policy.mjs";
+import { imageIntent, imageCapabilityMessage } from "./image-intent.mjs";
 import { indexDocument, relevantDocuments, relevantMemories, backfillDocuments } from "./memory.mjs";
 
 const app = express();
@@ -98,7 +99,7 @@ function startNextJob() {
   });
 }
 async function processChatJob(job) {
-  const { prompt, model, chatId: cid, fileIds, userId, locale } = job;
+  const { prompt, model, chatId: cid, fileIds, userId, locale, imageAccess } = job;
   const req = { user: { id: userId } };
   let chat = cid ? db.prepare("SELECT id,title FROM chats WHERE id=? AND user_id=?").get(cid, userId) : null;
   if (cid && !chat) throw new Error("Chat not found");
@@ -106,6 +107,17 @@ async function processChatJob(job) {
     if (!chat) {
       chat = { id: newId(), title: prompt.slice(0, 60) };
       db.prepare("INSERT INTO chats VALUES (?,?,?,?)").run(chat.id, req.user.id, chat.title, now());
+    }
+    // Answer capability questions from actual account permissions and engine health,
+    // not from an LLM that may incorrectly deny app features.
+    if (imageIntent(prompt) === "capability") {
+      const answer = imageCapabilityMessage(locale, imageAccess.enabled, imageAccess.online);
+      db.transaction(() => {
+        db.prepare("INSERT INTO messages VALUES (?,?,?,?,?,?)").run(newId(), chat.id, req.user.id, "user", prompt, now());
+        db.prepare("INSERT INTO messages VALUES (?,?,?,?,?,?)").run(newId(), chat.id, req.user.id, "assistant", answer, now());
+      })();
+      job.result = { chatId: chat.id, answer, imageStudioAvailable: imageAccess.enabled && imageAccess.online };
+      return;
     }
     // Recent conversation + relevant prior user messages, all scoped to this account and seven days.
     const history = db.prepare("SELECT id,role,content FROM messages WHERE chat_id=? AND user_id=? AND created>=? ORDER BY created DESC LIMIT 12")
@@ -141,6 +153,7 @@ async function processChatJob(job) {
       method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(180000),
       body: JSON.stringify({ model, stream: false, messages: [
         { role: "system", content: SYSTEM_PROMPT
+          + "\nJunior AI has a separate local image creation studio powered by Fooocus. Never say Junior AI cannot create images in general. You cannot generate an image directly in an ordinary text-chat response. If asked to create an image, guide the user to the Create images studio. If image creation is disabled for this account or the engine is offline, state that limitation accurately. Image studio available for this user's current request: " + (imageAccess.enabled && imageAccess.online ? "yes" : "no") + "."
           + (locale === "pt-BR" ? "\nResponda em português brasileiro (PT-BR), mantendo as respostas claras e naturais, a menos que o usuário solicite explicitamente outro idioma." : "")
           + (locale === "es-ES" ? "\nResponde en español natural y claro. Mantén la conversación en español salvo que la persona pida expresamente otro idioma." : "") },
         ...history.map(x => ({ role: x.role, content: x.content })), item
@@ -161,7 +174,7 @@ async function processChatJob(job) {
     throw e;
   }
 }
-app.post("/api/chat", requireUser, workLimiter, (req, res) => {
+app.post("/api/chat", requireUser, workLimiter, async (req, res) => {
   const prompt = safeText(req.body.prompt, 16000);
   const model = safeText(req.body.model, 120);
   const cid = safeText(req.body.chatId, 64);
@@ -170,7 +183,9 @@ app.post("/api/chat", requireUser, workLimiter, (req, res) => {
   if (cid && !db.prepare("SELECT 1 FROM chats WHERE id=? AND user_id=?").get(cid, req.user.id)) return res.status(404).json({ error: "Chat not found" });
   if ([...jobs.values()].some(j => j.userId === req.user.id && ["waiting","running"].includes(j.state))) return res.status(409).json({ error: "You already have a request in line. Please wait for it to finish." });
   if (waiting.length >= MAX_WAITING) return res.status(429).json({ error: "The waiting line is full. Please try again shortly." });
-  const job = { id: newId(), kind: "chat", userId: req.user.id, prompt, model, locale: ["pt-BR", "es-ES"].includes(req.body.locale) ? req.body.locale : "en", chatId: cid, fileIds: Array.isArray(req.body.fileIds) ? req.body.fileIds.slice(0,4) : [], state: "waiting", createdAt: now() };
+  const imagePermitted = imagesAvailableTo(req.user);
+  const imageAccess = { enabled: imagePermitted, online: imagePermitted ? await fooocusHealth().catch(() => false) : false };
+  const job = { id: newId(), kind: "chat", userId: req.user.id, prompt, model, imageAccess, locale: ["pt-BR", "es-ES"].includes(req.body.locale) ? req.body.locale : "en", chatId: cid, fileIds: Array.isArray(req.body.fileIds) ? req.body.fileIds.slice(0,4) : [], state: "waiting", createdAt: now() };
   jobs.set(job.id, job);
   waiting.push(job);
   res.status(202).json(publicJob(job));
