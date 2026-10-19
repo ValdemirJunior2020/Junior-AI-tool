@@ -418,8 +418,14 @@ app.delete("/api/admin/content/:type/:id", requireUser, requireAdmin, async (req
 });
 app.use("/api", (_req, res) => res.status(404).json({ error: "Unknown API endpoint" }));
 if (existsSync("./dist/index.html")) {
-  app.use(express.static("dist", { index: false }));
-  app.get("*", (_req, res) => res.sendFile(path.resolve("dist/index.html")));
+  // Entry page must revalidate after updates; hashed Vite assets remain cacheable.
+  app.use(express.static("dist", { index: false, setHeaders(res, filepath) {
+    if (filepath.endsWith(".html")) res.setHeader("Cache-Control", "no-cache, must-revalidate");
+  } }));
+  app.get("*", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.sendFile(path.resolve("dist/index.html"));
+  });
 }
 app.use((err, _req, res, _next) => {
   console.error("[Junior AI]", err.message);
