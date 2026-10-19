@@ -49,10 +49,13 @@ function command(job) {
     'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"',
     "command -v openhands >/dev/null || { echo 'OpenHands is not installed in Ubuntu WSL. Run SETUP-OPENHANDS-LOCAL.ps1.' >&2; exit 127; }",
     "cd \"$(wslpath -u "+sh(folder)+")\"",
+    "export OPENHANDS_SUPPRESS_BANNER=1",
+    "export TERM=dumb",
+    "export NO_COLOR=1",
     "export LLM_API_KEY=local-ollama",
     "export LLM_MODEL="+sh("openai/"+job.model),
     "export LLM_BASE_URL="+sh(ollamaEndpoint()),
-    "exec openhands --headless --json --override-with-envs --file \"$(wslpath -u "+sh(path.join(root,"task.md"))+")\""
+    "exec openhands --headless --json --override-with-envs --file \"$(wslpath -u "+sh(path.join(root,job.attempt===2?"retry.md":"task.md"))+")\""
   ].join("\n");
 }
 function append(job,line){
@@ -66,6 +69,7 @@ function append(job,line){
       if(event.observation?.is_error) message+=" • tool reported an error";
     }
   }catch{ message=message.slice(0,240); }
+  message=message.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g,"").replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g,"");
   job.log.push(message.slice(0,240));
   job.log=job.log.slice(-45);
 }
@@ -91,7 +95,7 @@ async function execute(job,userId) {
     if(timedOut) throw Error("The 45-minute build limit was reached. Existing project files were preserved.");
     if(exitCode!==0) throw Error("OpenHands exited with code "+exitCode+". Check the activity log and WSL/Ollama setup.");
     const files=await collectProjectFiles(workspace(job.id));
-    if(!files.length) throw Error("OpenHands finished but created no files; ZIP was not marked ready.");
+    if(!files.length) throw Error("OpenHands completed without writing any files. The selected local model may not be using terminal tools correctly. Try a tool-capable model and first test: create hello.py with print('ok').");
     job.state="ready";job.log.push("Files created: "+files.length+". OpenHands completed. Independently verify the application before using it.");
     audit(userId,"software_builder_ready",job.id);
   }catch(e){
@@ -144,6 +148,8 @@ builderRouter.post("/projects",async(req,res)=>{
       "Build a complete small application in the CURRENT working directory (the isolated, empty project workspace).",
       "Do not read, write, delete, or execute files outside this current project workspace.",
       "Never access secrets, system configuration, other home folders, SSH keys or existing projects.",
+      "Your FIRST action MUST be to use the terminal tool to create an actual source file inside this workspace.",
+      "Do NOT end the task until you have inspected the files on disk with the terminal tool.",
       "Create actual source files and a README with installation and usage instructions.",
       "Install dependencies only when necessary and use free, open-source tools.",
       "Run appropriate tests/build commands; inspect failures, fix and run them again.",
