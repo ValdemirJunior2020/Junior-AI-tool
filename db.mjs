@@ -4,6 +4,7 @@ import { randomBytes, createHash, scrypt as scryptCallback, timingSafeEqual } fr
 import { promisify } from "node:util";
 import { mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
+import { initializeMemory } from "./memory.mjs";
 const scrypt = promisify(scryptCallback);
 export const DATA = path.resolve(process.env.DATA_DIR || "./data");
 export const STORE = path.join(DATA, "files");
@@ -26,6 +27,8 @@ if (!db.pragma("table_info(users)").some(col => col.name === "display_name")) db
 if (!db.pragma("table_info(users)").some(col => col.name === "totp_secret")) db.exec("ALTER TABLE users ADD COLUMN totp_secret TEXT NOT NULL DEFAULT ''");
 // Existing authenticator secrets are no longer used; clear them from local records.
 db.prepare("UPDATE users SET totp_secret='' WHERE totp_secret<>''").run();
+// Create the local full-text indexes without replacing or modifying existing user records.
+initializeMemory(db);
 export const now = () => Date.now();
 export const newId = () => randomBytes(16).toString("hex");
 export const digest = (v) => createHash("sha256").update(v).digest("hex");
