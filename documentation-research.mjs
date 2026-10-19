@@ -53,12 +53,22 @@ export async function crawlDocumentation(url, { timeoutMs = 24000 } = {}) {
     proc.on("error", error => { clearTimeout(timer); reject(Error("Local Crawl4AI Python is not available: " + error.message)); });
     proc.on("close", code => {
       clearTimeout(timer);
-      if (code !== 0) return reject(Error("Local documentation reader failed (code " + code + ")"));
-      try {
-        const data = JSON.parse(result.trim().split("\n").at(-1));
-        if (data.error || !data.text) throw Error("Could not extract readable documentation");
-        resolve({ url: safe, text: String(data.text).slice(0, 9000) });
-      } catch { reject(Error("Documentation reader returned no usable text")); }
+      // Crawl4AI may print progress lines before the final JSON payload.
+      // Read the most recent valid JSON line instead of assuming stdout is JSON-only.
+      let data;
+      for (const line of result.trim().split(/\r?\n/).reverse()) {
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed && typeof parsed === "object" && ("text" in parsed || "error" in parsed)) {
+            data = parsed;
+            break;
+          }
+        } catch {}
+      }
+      if (code !== 0) return reject(Error(data?.error ? String(data.error).slice(0, 170) : "Python crawler failed with code " + code + (errors ? ": " + errors.slice(-140) : "")));
+      if (data?.error) return reject(Error(String(data.error).slice(0, 170)));
+      if (!data || typeof data.text !== "string" || data.text.length < 40) return reject(Error("Crawler output contained no readable documentation JSON"));
+      resolve({ url: safe, text: data.text.slice(0, 9000) });
     });
   });
 }
