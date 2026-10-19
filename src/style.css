@@ -138,3 +138,9 @@
 @media(max-width:345px){
   .auth-header{flex-wrap:wrap}
 }
+
+
+/* Show the real image-studio action with capability answers in chat. */
+.image-studio-cta{display:inline-flex;align-items:center;gap:8px;margin:10px 0 2px;padding:10px 13px;border:1px solid #cfd5f4;border-radius:10px;background:#f1f3ff;color:#4f57b2;font-size:12px;font-weight:750}
+.image-studio-cta:hover{background:#e7eaff;border-color:#aeb9ec}
+.image-studio-cta:focus-visible{outline:3px solid #6961bd;outline-offset:2px}
