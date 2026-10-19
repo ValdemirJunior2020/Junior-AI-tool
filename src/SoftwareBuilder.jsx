@@ -36,7 +36,7 @@ export default function SoftwareBuilder() {
     if(starting)return;
     setStarting(true);setError("");
     try{
-      const r=await api("/projects",{method:"POST",body:JSON.stringify({name:name.trim(),prompt:prompt.trim()})});
+      const r=await api("/projects",{method:"POST",body:JSON.stringify({name:name.trim()||prompt.trim().slice(0,65),prompt:prompt.trim()})});
       setActive(r.id);setName("");setPrompt("");await reload();
     }catch(e){setError(e.message);}
     finally{setStarting(false);}
@@ -59,11 +59,12 @@ export default function SoftwareBuilder() {
     {status?.configurationError&&<div className="builder-setup">{status.configurationError}</div>}
     {error&&<div className="builder-error" role="alert"><AlertCircle size={17}/>{error}</div>}
     <form className="builder-form" onSubmit={start}>
-      <label>Project name<input maxLength={75} required value={name} onChange={e=>setName(e.target.value)} placeholder="My QA Desktop Tool"/></label>
+      <label>Project name (optional)<input maxLength={75} value={name} onChange={e=>setName(e.target.value)} placeholder="Auto-generated from your request"/></label>
       <label>What software should OpenHands build?<textarea required minLength={20} maxLength={4500} rows={6} value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Build a complete local app that imports call files, analyzes results, saves data, includes tests and clear setup instructions..."/></label>
-      <button className="primary" type="submit" disabled={!canStart||!name.trim()||prompt.trim().length<20}>
+      <button className="primary" type="submit" disabled={!canStart||prompt.trim().length<20}>
         {starting?<Loader2 className="spin" size={17}/>:<Play size={17}/>} Create, test & package ZIP
       </button>
+      {prompt.trim().length>0&&prompt.trim().length<20&&<p className="builder-small">Please describe what you want to build in at least 20 characters.</p>}
       <p className="builder-small">Build jobs are limited to 45 minutes. If OpenHands fails, existing project files are preserved. Builds are not guaranteed to pass every test.</p>
     </form>
     <div className="builder-projects-head"><h2>Recent builds</h2><span>Files are kept locally for up to 7 days</span></div>
