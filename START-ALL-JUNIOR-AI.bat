@@ -45,6 +45,30 @@ echo Launching image engine monitor...
 start "Junior AI - Image Engine" /D "%~dp0" cmd.exe /k "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ""%~dp0scripts\watch-fooocus.ps1"""
 echo Startup logs appear in the Junior AI - Image Engine window.
 echo.
+echo [Builder] Checking local OpenHands in Ubuntu WSL...
+where wsl.exe >nul 2>nul
+if errorlevel 1 (
+  echo WARNING: WSL unavailable. Software Builder will not run.
+) else (
+  wsl.exe -d Ubuntu --exec /root/.local/bin/openhands --version >nul 2>nul
+  if errorlevel 1 (
+    echo WARNING: OpenHands not detected in Ubuntu. Run SETUP-OPENHANDS-LOCAL.ps1.
+  ) else (
+    powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 4 ^| Out-Null; exit 0 } catch { exit 1 }" >nul 2>nul
+    if errorlevel 1 (
+      echo WARNING: Ollama not ready yet. Builder checks again when used.
+    ) else (
+      wsl.exe -d Ubuntu --exec curl -fsS --max-time 5 http://127.0.0.1:11434/api/tags >nul 2>nul
+      if errorlevel 1 (
+        echo WARNING: OpenHands cannot reach Ollama from WSL.
+      ) else (
+        echo OpenHands and local Ollama connection detected.
+      )
+    )
+  )
+)
+echo OpenHands is run on demand when you click Software Builder.
+echo.
 echo [3/4] Building Junior AI frontend...
 call npm run build
 if errorlevel 1 (
