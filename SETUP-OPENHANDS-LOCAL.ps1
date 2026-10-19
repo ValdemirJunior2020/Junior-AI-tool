@@ -27,6 +27,13 @@ if ($LASTEXITCODE -ne 0 -or -not $wslPath.StartsWith("/")) {
   Write-Host "Cannot resolve WSL path to setup script." -ForegroundColor Red
   exit 1
 }
+# Normalize the checked-out .sh file to LF before Bash reads it.
+# Some Windows Git configurations checkout shell scripts with CRLF.
+$rawShell = [System.IO.File]::ReadAllText($script)
+$lfShell = $rawShell.Replace("`r`n", "`n").Replace("`r", "")
+if ($lfShell -ne $rawShell) {
+  [System.IO.File]::WriteAllText($script, $lfShell, (New-Object System.Text.UTF8Encoding($false)))
+}
 Write-Host "Installing uv, Python 3.12 and OpenHands inside Ubuntu WSL..."
 & wsl.exe --distribution Ubuntu --exec bash $wslPath
 if ($LASTEXITCODE -ne 0) {
