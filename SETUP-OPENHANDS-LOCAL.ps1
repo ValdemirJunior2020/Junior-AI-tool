@@ -15,26 +15,20 @@ if ($LASTEXITCODE -ne 0) {
   Write-Host "Ubuntu WSL not installed or initialized. Run wsl --install -d Ubuntu and complete initial setup." -ForegroundColor Red
   exit 1
 }
-$setup = @'
-set -euo pipefail
-if ! command -v curl >/dev/null; then
-  echo "Missing curl. Install in Ubuntu: sudo apt update && sudo apt install curl"
-  exit 8
-fi
-export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-if ! command -v uv >/dev/null; then
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-fi
-export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-uv python install 3.12
-uv tool install --python 3.12 openhands
-openhands --version
-'@
-Write-Host "Installing uv, Python 3.12 and the open-source OpenHands CLI inside Ubuntu WSL..."
-# PowerShell multiline here-strings contain CRLF on Windows; Bash needs LF.
-# Pass a single LF-normalized command argument, avoiding CR in 'set -euo pipefail'.
-$setup = $setup -replace "`r`n", "`n" -replace "`r", ""
-& wsl.exe --distribution Ubuntu --exec bash -lc $setup
+# Use a real UTF-8 LF shell script instead of passing multiline source as one
+# bash -lc argument (Windows native-argument quoting can split/truncate it).
+$script = Join-Path $root "scripts\setup-openhands-wsl.sh"
+if (-not (Test-Path -LiteralPath $script)) {
+  Write-Host "Missing scripts/setup-openhands-wsl.sh. Run git pull origin main." -ForegroundColor Red
+  exit 1
+}
+$wslPath = (& wsl.exe --distribution Ubuntu --exec wslpath -u "$script" | Out-String).Trim()
+if ($LASTEXITCODE -ne 0 -or -not $wslPath.StartsWith("/")) {
+  Write-Host "Cannot resolve WSL path to setup script." -ForegroundColor Red
+  exit 1
+}
+Write-Host "Installing uv, Python 3.12 and OpenHands inside Ubuntu WSL..."
+& wsl.exe --distribution Ubuntu --exec bash $wslPath
 if ($LASTEXITCODE -ne 0) {
   Write-Host "OpenHands setup failed; original Junior AI remains unchanged." -ForegroundColor Red
   exit 1
