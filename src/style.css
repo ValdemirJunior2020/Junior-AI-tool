@@ -161,3 +161,20 @@
 .news-answer a:hover,.news-answer a:focus-visible{text-decoration:underline}
 .news-answer em{color:#838b9f;font-style:normal;font-size:11px;line-height:1.55}
 @media(max-width:760px){.bubble.news-answer{max-width:100%}.news-answer h2{font-size:15px}}
+
+
+/* Junior AI readable answer typography and copyable syntax-highlighted code. */
+.bubble-row.assistant .bubble{font-size:15px;line-height:1.7;max-width:min(95%,920px)}
+.bubble-row.assistant .bubble p,.bubble-row.assistant .bubble li{font-size:15px;line-height:1.7}
+.bubble-row.assistant .bubble h2{font-size:19px;line-height:1.35}
+.bubble-row.assistant .bubble h3{font-size:16px;line-height:1.4}
+.bubble-row.assistant .bubble :not(pre)>code{font-size:.9em;background:#f0f2fa;color:#4854a0;border-radius:5px;padding:2px 5px}
+.junior-code-block{margin:14px 0 18px;overflow:hidden;border-radius:13px;border:1px solid #353d52;background:#202638;max-width:100%;box-shadow:0 4px 16px #12192d14}
+.junior-code-bar{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:#30384a;border-bottom:1px solid #424b60;gap:14px}
+.junior-code-lang{font-size:10px;letter-spacing:1px;color:#ccd7ef;font-weight:750}
+.junior-code-copy{display:inline-flex;align-items:center;gap:7px;border:1px solid #59647a;background:#3c465d;color:#f7f9ff;border-radius:8px;padding:6px 10px;font-size:11px;line-height:1.1}
+.junior-code-copy:hover{background:#505d77}
+.junior-code-copy:focus-visible{outline:2px solid #b6c5ff;outline-offset:2px}
+.bubble pre.junior-code-pre{margin:0;border-radius:0;max-width:100%;overflow-x:auto;padding:14px 16px;background:#202638;font-size:14px;line-height:1.65;tab-size:4}
+.bubble .junior-code-pre code.hljs{display:block;background:transparent;padding:0;font-family:Consolas,'Cascadia Code','Courier New',monospace;font-size:14px;line-height:1.65;white-space:pre;overflow-wrap:normal;word-break:normal;color:#e9edf7}
+@media(max-width:760px){.bubble-row.assistant .bubble{max-width:100%;font-size:15px}.bubble pre.junior-code-pre{padding:12px}}
