@@ -31,6 +31,7 @@ function Auth({ onLogin }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [resetToken, setResetToken] = useState("");
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -44,9 +45,9 @@ function Auth({ onLogin }) {
     e.preventDefault(); setMessage(""); setLoading(true);
     try {
       if (mode === "login") {
-        const data = await post("/auth/login", { email, password }); onLogin(data.user);
+        const data = await post("/auth/login", { email, password, remember: rememberMe }); onLogin(data.user, false);
       } else if (mode === "register") {
-        const data = await post("/auth/register", { email, password }); onLogin(data.user);
+        const data = await post("/auth/register", { email, password }); onLogin(data.user, true);
       } else if (mode === "forgot") {
         const data = await post("/auth/reset/request", { email }); setMessage(data.message);
       } else {
@@ -65,16 +66,18 @@ function Auth({ onLogin }) {
       </div>}
       <div className="auth-icon"><Sparkles size={27}/></div>
       <h1>{t(mode === "register" ? "Create your account" : mode === "forgot" ? "Reset your password" : mode === "confirm-reset" ? "Choose a new password" : "Welcome to Junior AI")}</h1>
-      <p className="muted">{t("Your private AI engine, with a thoughtful and encouraging voice.")}</p>
       {mode !== "confirm-reset" && <label>{t("Email address")}<input required type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"/></label>}
       {mode !== "forgot" && <label>{t("Password")}<div className="password-field"><input required minLength={mode === "login" ? undefined : 12} maxLength={128} type={visible ? "text" : "password"} autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={e => setPassword(e.target.value)} placeholder={t(mode === "login" ? "Your password" : "At least 12 characters")}/><button className="password-eye" type="button" onClick={() => setVisible(!visible)}>{visible ? <EyeOff size={18}/> : <Eye size={18}/>}</button></div></label>}
-      {message && <p className="inline-notice">{message}</p>}
+      {mode === "login" && <label className="remember-choice">
+        <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}/>
+        <span>{t("Remember me")}<small>{t("Keep me signed in for 30 days")}</small></span>
+      </label>}
+      {message && <p className="inline-notice">{message}</p>
       <button className="primary full" disabled={loading} type="submit">{loading ? <Loader2 className="spin" size={17}/> : <ChevronRight size={17}/>}{t(mode === "login" ? "Sign in" : mode === "register" ? "Create account" : mode === "forgot" ? "Send reset link" : "Save new password")}</button>
       <div className="auth-switch">
         {mode === "login" ? <button type="button" onClick={() => {setMode("forgot");setMessage("");}}>{t("Forgot your password?")}</button> :
         <button type="button" onClick={() => {setMode("login");setMessage("");}}>{t(mode === "register" ? "Already have an account? Sign in" : "Back to sign in")}</button>}
       </div>
-      <div className="privacy-note"><ShieldCheck size={15}/> {t("Private computer processing · No paid AI APIs · Content expires after 7 days")}</div>
     </form>
   </div>;
 }
@@ -325,7 +328,10 @@ function App() {
     </div>
   </div>;
 
-  if (!user) return <Auth onLogin={setUser}/>;
+  if (!user) return <Auth onLogin={(account, newlyCreated) => {
+    setUser(account);
+    if (newlyCreated) setNotice(t("Welcome to Junior AI! Your account is ready."));
+  }}/>;
   return <div className="shell">
     {sidebar && <button className="mobile-menu-backdrop" type="button" aria-label="Close navigation menu" onClick={() => setSidebar(false)}/>}
     {sidebar && <aside className="sidebar" id="app-navigation" aria-label="Navigation">
