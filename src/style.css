@@ -178,3 +178,25 @@
 .bubble pre.junior-code-pre{margin:0;border-radius:0;max-width:100%;overflow-x:auto;padding:14px 16px;background:#202638;font-size:14px;line-height:1.65;tab-size:4}
 .bubble .junior-code-pre code.hljs{display:block;background:transparent;padding:0;font-family:Consolas,'Cascadia Code','Courier New',monospace;font-size:14px;line-height:1.65;white-space:pre;overflow-wrap:normal;word-break:normal;color:#e9edf7}
 @media(max-width:760px){.bubble-row.assistant .bubble{max-width:100%;font-size:15px}.bubble pre.junior-code-pre{padding:12px}}
+
+
+/* Readable code at normal desktop scaling; also helps older cached renderers. */
+.bubble-row.assistant .bubble pre,
+.bubble-row.assistant .bubble pre code,
+.bubble-row.assistant .bubble pre code.hljs,
+.bubble-row.assistant .bubble .junior-code-pre code.hljs {
+  font-family:Consolas,'Cascadia Code','Courier New',monospace;
+  font-size:16px;
+  line-height:1.7;
+}
+.bubble-row.assistant .bubble .junior-code-pre code.hljs .hljs-keyword,
+.bubble-row.assistant .bubble .junior-code-pre code.hljs .hljs-selector-tag,
+.bubble-row.assistant .bubble .junior-code-pre code.hljs .hljs-literal {color:#c792ea}
+.bubble-row.assistant .bubble .junior-code-pre code.hljs .hljs-string,
+.bubble-row.assistant .bubble .junior-code-pre code.hljs .hljs-attr {color:#b9e889}
+.bubble-row.assistant .bubble .junior-code-pre code.hljs .hljs-number,
+.bubble-row.assistant .bubble .junior-code-pre code.hljs .hljs-built_in {color:#ffcb8b}
+.bubble-row.assistant .bubble .junior-code-pre code.hljs .hljs-title,
+.bubble-row.assistant .bubble .junior-code-pre code.hljs .hljs-function {color:#84c9ff}
+.bubble-row.assistant .bubble .junior-code-pre code.hljs .hljs-comment {color:#98a6b9}
+.bubble-row.assistant .bubble pre{scrollbar-width:thin}
