@@ -2,7 +2,7 @@ import express from "express";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
-import { mkdir, writeFile, readFile, readdir, rename } from "node:fs/promises";
+import { mkdir, writeFile, readFile, readdir, rename, rm } from "node:fs/promises";
 import { DATA, audit, safeText } from "./db.mjs";
 import { collectProjectFiles, zipBuffers } from "./software-builder-zip.mjs";
 
@@ -99,6 +99,14 @@ async function execute(job,userId) {
   }finally{
     clearTimeout(timeout);running.delete(job.id);
     await save(job).catch(e=>console.error("[Builder] Could not persist job:",e.message));
+  }
+}
+export async function cleanupBuilder(cutoff){
+  const entries=await readdir(ROOT,{withFileTypes:true}).catch(()=>[]);
+  for(const entry of entries){
+    if(!entry.isDirectory()||!ID.test(entry.name)||running.has(entry.name)) continue;
+    const job=await read(entry.name);
+    if(job&&job.created<cutoff) await rm(location(entry.name),{recursive:true,force:true});
   }
 }
 builderRouter.get("/status",async(_req,res)=>{
