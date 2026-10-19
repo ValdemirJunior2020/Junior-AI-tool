@@ -6,7 +6,7 @@ export function imageIntent(text) {
   // Questions about the app's ability, not requests to create a new image.
   if (/^(?:can|could|do|does|are|is)\s+(?:you|junior ai|this (?:app|tool))\s+(?:actually\s+)?(?:create|generate|make|draw|produce)\s+(?:an?\s+)?(?:images?|pictures?|photos?|art|illustrations?)(?:\s+(?:here|for me|at all|now))?\s*[?.!]*$/i.test(prompt) ||
       /^(?:voc[eê]s?\s+)?(?:consegue|conseguem|pode|podem)\s+(?:criar|gerar|fazer|desenhar)\s+(?:imagens?|fotos?|figuras?|ilustra[cç][oõ]es)(?:\s+aqui)?\s*[?.!]*$/i.test(prompt) ||
-      /^(?:puedes|pueden|pod[eé]is)\s+(?:crear|generar|hacer|dibujar)\s+(?:im[aá]genes?|fotos?|ilustraciones)(?:\s+aqu[ií])?\s*[?.!]*$/i.test(prompt)) return "capability";
+      /^[¿]?\s*(?:puedes|pueden|pod[eé]is)\s+(?:crear|generar|hacer|dibujar)\s+(?:im[aá]genes?|fotos?|ilustraciones)(?:\s+aqu[ií])?\s*[?.!]*$/i.test(prompt)) return "capability";
   // Explicit image generation actions; exclude coding requests and image analysis.
   if (/^(?:please\s+)?(?:create|generate|draw|make|design|render|paint)\s+(?:me\s+)?(?:an?\s+)?(?:image|picture|photo|illustration|drawing|painting|artwork)\b/i.test(prompt) ||
       /^(?:por favor\s+)?(?:crie|criar|gere|gerar|fa[cç]a|fazer|desenhe)\s+(?:uma?\s+)?(?:imagem|foto|ilustra[cç][aã]o|desenho)\b/i.test(prompt) ||
