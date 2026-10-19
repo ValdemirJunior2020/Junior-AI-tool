@@ -33,6 +33,8 @@ test("a follow-up naming the second code references the exact second sample",()=
   assert.equal(extractCodeExamples(answer).length,4);
   assert.equal(codeReferenceIndex("modifique o segundo código"),1);
   assert.equal(codeReferenceIndex("e o terceiro exemplo?"),2);
+  assert.equal(codeReferenceIndex("e o 2º?"),1);
+  assert.equal(codeReferenceIndex("mude o 3o exemplo"),2);
   const result=referencedCodeContext(history,"altere o segundo código sem mexer nos outros");
   assert.match(result,/Code #2 \(javascript\)/);
   assert.match(result,/console\.log\('SECOND'\)/);
