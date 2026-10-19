@@ -4,11 +4,11 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
 // Validate backend syntax as part of every public frontend deployment.
-for (const source of ["server.mjs", "auth.mjs", "fooocus-local.mjs", "policy.mjs", "memory.mjs", "db.mjs", "image-intent.mjs", "trusted-commands.mjs"]) {
+for (const source of ["server.mjs", "auth.mjs", "fooocus-local.mjs", "policy.mjs", "memory.mjs", "db.mjs", "image-intent.mjs", "trusted-commands.mjs", "documentation-research.mjs"]) {
   execFileSync(process.execPath, ["--check", source], { stdio: "inherit" });
 }
 // Fail deployment if retrieval, isolation or retention regressions are detected.
-execFileSync(process.execPath, ["--test", "tests/memory.test.mjs", "tests/image-intent.test.mjs", "tests/trusted-commands.test.mjs"], { stdio: "inherit", env: process.env });
+execFileSync(process.execPath, ["--test", "tests/memory.test.mjs", "tests/image-intent.test.mjs", "tests/trusted-commands.test.mjs", "tests/documentation-research.test.mjs"], { stdio: "inherit", env: process.env });
 execFileSync(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"], { stdio: "inherit", env: process.env });
 
 const api = process.env.JUNIOR_BACKEND_URL?.trim();
