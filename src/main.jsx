@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import ReactMarkdown from "react-markdown";
+import CodeMarkdown from "./CodeMarkdown.jsx";
 import {
   Sparkles, Plus, MessageSquare, Image as ImageIcon, FileSpreadsheet, Code2, FileText,
   ShieldCheck, Activity, Settings, LogOut, Paperclip, Send, Trash2, Eye, EyeOff,
@@ -392,7 +392,7 @@ function App() {
           </div> : messages.map((m, i) => <div className={"bubble-row " + m.role} key={m.id || i}>
               {m.role === "assistant" && <div className="assistant-icon"><Sparkles size={16}/></div>}
               <div className={"bubble" + (m.role === "assistant" && /### 📰 (?:Fontes consultadas|Sources checked|Fuentes consultadas)/.test(m.content) ? " news-answer" : "")}>
-                {m.role === "assistant" ? <ReactMarkdown>{m.content}</ReactMarkdown> : <p>{m.content}</p>}
+                {m.role === "assistant" ? <CodeMarkdown locale={language}>{m.content}</CodeMarkdown> : <p>{m.content}</p>}
                 {m.role === "assistant" && imageEnabled && imageOnline
                   && (m.imageStudioAvailable || imageIntent(messages[i - 1]?.content) === "capability")
                   && <button type="button" className="image-studio-cta"
