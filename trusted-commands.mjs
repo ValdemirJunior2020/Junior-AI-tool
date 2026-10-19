@@ -5,6 +5,8 @@ export function recognizeWhisperCliRequest(value) {
   if (!/\bwhisper\b/i.test(text) ||
       !/\b(transcrib|transcri|transcrip|speech.to.text)/i.test(text) ||
       !/\b(cli|command|comando|powershell|terminal|cmd)\b/i.test(text)) return null;
+  // Reject requests mixed with a second executable command rather than echoing it.
+  if (/(?:;|&&|\|\||`|\n)\s*(?:rm|del|erase|rmdir|powershell|cmd|start|sh)\b/i.test(text)) return null;
   const file = text.match(PATH);
   if (!file) return null;
   const input = file[1].trim();
