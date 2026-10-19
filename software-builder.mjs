@@ -11,7 +11,7 @@ const ROOT=path.join(DATA,"software-builder");
 const enabled=()=>process.env.ENABLE_SOFTWARE_BUILDER==="true";
 const running=new Map();
 const ID=/^[a-f0-9]{16}$/;
-const modelName=()=>/^[a-zA-Z0-9_./:-]{1,100}$/.test(process.env.OPENHANDS_MODEL||"qwen2.5-coder:14b") ? (process.env.OPENHANDS_MODEL||"qwen2.5-coder:14b") : "qwen2.5-coder:14b";
+const modelName=()=>/^[a-zA-Z0-9_./:-]{1,100}$/.test(process.env.OPENHANDS_MODEL||"qwen2.5-coder:7b") ? (process.env.OPENHANDS_MODEL||"qwen2.5-coder:7b") : "qwen2.5-coder:7b";
 // The OpenAI-compatible Ollama endpoint must remain local to WSL. No cloud/API billing fallback.
 function ollamaEndpoint(){
   const url=new URL(process.env.OPENHANDS_OLLAMA_URL||"http://127.0.0.1:11434/v1");
