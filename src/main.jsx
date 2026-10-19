@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import CodeMarkdown from "./CodeMarkdown.jsx";
+import SoftwareBuilder from "./SoftwareBuilder.jsx";
 import {
   Sparkles, Plus, MessageSquare, Image as ImageIcon, FileSpreadsheet, Code2, FileText,
   ShieldCheck, Activity, Settings, LogOut, Paperclip, Send, Trash2, Eye, EyeOff,
@@ -392,6 +393,7 @@ function App() {
         <button className={tab === "chat" ? "nav active" : "nav"} onClick={() => goTo("chat")}><MessageSquare size={18}/> {t("Chat & coding")}</button>
         <button className={tab === "images" ? "nav active" : "nav"} onClick={() => goTo("images")}><ImageIcon size={18}/> {t("Create images")}</button>
         <button className={tab === "files" ? "nav active" : "nav"} onClick={() => goTo("files")}><FileText size={18}/> {t("My documents")}</button>
+        {user.role === "admin" && <button className={tab === "builder" ? "nav active" : "nav"} onClick={() => goTo("builder")}><Code2 size={18}/> Software Builder</button>}
         <button className={tab === "settings" ? "nav active" : "nav"} onClick={() => goTo("settings")}><Settings size={18}/> Account settings</button>
         {user.role === "admin" && <button className={tab === "admin" ? "nav active" : "nav"} onClick={() => goTo("admin")}><ShieldCheck size={18}/> Super Admin</button>}
       </div>
@@ -410,7 +412,7 @@ function App() {
     </aside>}
     <main className="main">
       <header className="topbar">
-        <div className="top-left"><button type="button" className="icon-btn menu-open-button" onClick={() => setSidebar(value => !value)} aria-label={sidebar ? "Close menu" : "Open menu"} aria-expanded={sidebar} aria-controls="app-navigation"><PanelLeftOpen size={20}/></button><span className="page-name">{t(tab === "chat" ? "Junior AI" : tab === "images" ? "Image studio" : tab === "files" ? "Knowledge library" : tab === "admin" ? "Super Admin" : "Settings")}</span><span className="local-label"><span className="live-dot"/> {t("Local AI")}</span></div>
+        <div className="top-left"><button type="button" className="icon-btn menu-open-button" onClick={() => setSidebar(value => !value)} aria-label={sidebar ? "Close menu" : "Open menu"} aria-expanded={sidebar} aria-controls="app-navigation"><PanelLeftOpen size={20}/></button><span className="page-name">{t(tab === "chat" ? "Junior AI" : tab === "images" ? "Image studio" : tab === "files" ? "Knowledge library" : tab === "builder" ? "Software Builder" : tab === "admin" ? "Super Admin" : "Settings")}</span><span className="local-label"><span className="live-dot"/> {t("Local AI")}</span></div>
         <div className="top-right"><LanguageFlags language={language} setLanguage={setLanguage}/>{tab === "chat" && <span className="model-ready" title={model ? "Junior AI automatically selected a local model" : "Start Ollama to use AI chat"}><span className={model ? "model-ready-dot" : "model-ready-dot offline"}/>{t(model ? "AI ready" : "AI offline")}</span>}<button className={showLogs ? "icon-btn selected-icon" : "icon-btn"} onClick={() => setShowLogs(!showLogs)} title="Toggle activity log"><Activity size={19}/></button></div>
       </header>
       {notice && <div className="notice"><AlertCircle size={17}/>{notice}<button onClick={() => setNotice("")}>×</button></div>}
@@ -447,6 +449,7 @@ function App() {
           <div className="footer-note">{t("Junior AI is locally powered. It can make mistakes; verify important output.")}</div>
         </div>
       </div>}
+      {tab === "builder" && user.role === "admin" && <SoftwareBuilder/>}
       {tab === "images" && <section className="page-content"><div className="page-heading"><div className="topic-icon purple"><WandSparkles size={27}/></div><h1>{t("Imagine something new")}</h1><p>{t("Describe what you'd like to see, and Junior AI will create an image for you.")}</p></div>
         {!imageEnabled && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>{t("Image creation is not available for this account yet.")}</strong> {t("Please check back later.")}</span></div>}
         {imageEnabled && !imageOnline && <div className="info-card image-setup-info"><AlertCircle size={19}/><span><strong>{t("Our image studio is temporarily unavailable.")}</strong> {t("Please try again in a few minutes. Thanks for your patience!")}</span></div>}
