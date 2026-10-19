@@ -102,6 +102,14 @@ After pulling on Windows, run `npm install` once to add the new dependency. Rest
 - Only public HTTPS documentation sites from the hard-coded allowlist are supported. Redirects and subrequests to other domains are blocked; localhost, private IPs, credentials and arbitrary sites are not allowed. This is **documentation reading**, not universal web search.
 - External page content is untrusted and never overrides assistant instructions. Failed fetches are disclosed rather than presented as completed research. Responses can cite the documentation link.
 
+## Readable code and conversation continuity
+
+- Code fences display colorized syntax, aligned line numbers, and wrapping for long lines without changing the underlying code. Each code block has **Copy**, **Wrap lines**, **Line numbers**, **A- / A+ font size (12–22 px)**, and **Collapse/Expand** controls. The display preferences are shared across code blocks and saved locally in the browser; collapse state is per block.
+- The last active conversation is restored after reloading the **same browser tab**, using a user-scoped ID in sessionStorage. Conversation content stays in the local SQLite backend; sessionStorage holds no message contents.
+- Each new turn uses bounded, account-isolated recent history. Explicit references such as “o segundo código” or “e o 2º?” can reuse the correctly numbered code example from the assistant's previous response even when that response is long. The selected example is context, not proof that the previous response was correct.
+- The app continues its existing **seven-day retention**. This change does not make memories permanent or bypass user/account isolation.
+- Verify the new experience with `npm run verify:experience`; this runs display, rendered React, and conversation tests, then builds Vite. The original `START-ALL-JUNIOR-AI.bat` is unchanged. No extra npm packages are needed.
+
 ## Smart memory (local SQLite FTS5)
 
 - New text uploads are automatically split into overlapping passages and indexed in SQLite. Up to 70,000 saved characters per document are searchable, including passages near the end.
