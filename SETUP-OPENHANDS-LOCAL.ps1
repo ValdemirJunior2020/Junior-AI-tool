@@ -60,7 +60,19 @@ if ($existing -match '(?m)^\s*ENABLE_SOFTWARE_BUILDER\s*=') {
 } else {
   $updated = $existing.TrimEnd([char]13,[char]10) + [Environment]::NewLine + 'ENABLE_SOFTWARE_BUILDER=true' + [Environment]::NewLine
 }
-if ($updated -notmatch '(?m)^\s*OPENHANDS_MODEL\s*=') { $updated += [Environment]::NewLine + 'OPENHANDS_MODEL=qwen2.5-coder:14b' + [Environment]::NewLine }
+# Prefer an already-installed coding model. Do not pull an extra 9 GB model.
+$models = @( (& ollama list 2>$null) | Select-String 'qwen2.5-coder:7b' )
+$model = if ($models.Count -gt 0) { 'qwen2.5-coder:7b' } else { 'qwen2.5-coder:14b' }
+if ($updated -match '(?m)^\s*OPENHANDS_MODEL\s*=') {
+  $updated = [regex]::Replace($updated,'(?m)^\s*OPENHANDS_MODEL\s*=.*
+if ($updated -notmatch '(?m)^\s*OPENHANDS_OLLAMA_URL\s*=') { $updated += [Environment]::NewLine + 'OPENHANDS_OLLAMA_URL=http://127.0.0.1:11434/v1' + [Environment]::NewLine }
+[System.IO.File]::WriteAllText($envFile,$updated,(New-Object System.Text.UTF8Encoding($false)))
+Write-Host "OpenHands installed and Builder enabled inside the existing .env." -ForegroundColor Green
+Write-Host "Restart the ORIGINAL START-ALL-JUNIOR-AI.bat, then open http://127.0.0.1:3001 as super admin." -ForegroundColor Green
+, ('OPENHANDS_MODEL=' + $model))
+} else {
+  $updated += [Environment]::NewLine + ('OPENHANDS_MODEL=' + $model) + [Environment]::NewLine
+}
 if ($updated -notmatch '(?m)^\s*OPENHANDS_OLLAMA_URL\s*=') { $updated += [Environment]::NewLine + 'OPENHANDS_OLLAMA_URL=http://127.0.0.1:11434/v1' + [Environment]::NewLine }
 [System.IO.File]::WriteAllText($envFile,$updated,(New-Object System.Text.UTF8Encoding($false)))
 Write-Host "OpenHands installed and Builder enabled inside the existing .env." -ForegroundColor Green
