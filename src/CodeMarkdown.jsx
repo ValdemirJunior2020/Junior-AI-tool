@@ -89,18 +89,25 @@ function CodeBlock({ code, language, locale = "en" }) {
   </div>;
 }
 
-// A pre element is an unambiguous fenced/indented Markdown code block;
-// inline code remains an ordinary <code> element.
+// Some model replies contain plain indented blocks; render every pre block
+// through the same component rather than silently falling back to monochrome.
+export function codeDetailsFromPre(contents) {
+  const children = React.Children.toArray(contents);
+  const target = children.find(node => React.isValidElement(node) &&
+    (node.type === "code" || node.props?.className?.includes?.("language-")));
+  const element = target || children.find(node => React.isValidElement(node));
+  const raw = element?.props?.children ?? contents;
+  const text = (Array.isArray(raw) ? raw.join("") : String(raw ?? "")).replace(/\n$/, "");
+  const cls = String(element?.props?.className || "");
+  const matched = /(?:^|\s)language-([a-z0-9+#-]+)/i.exec(cls);
+  return {text, language: matched?.[1] || ""};
+}
+
 export default function CodeMarkdown({ children, locale = "en" }) {
   return <ReactMarkdown components={{
     pre({ children: contents }) {
-      const codeElement = React.Children.toArray(contents).find(node =>
-        React.isValidElement(node) && node.type === "code"
-      );
-      if (!codeElement) return <pre>{contents}</pre>;
-      const text = String(codeElement.props.children ?? "").replace(/\n$/, "");
-      const matched = /(?:^|\s)language-([a-z0-9+#-]+)/i.exec(codeElement.props.className || "");
-      return <CodeBlock code={text} language={matched?.[1] || ""} locale={locale}/>;
+      const {text, language} = codeDetailsFromPre(contents);
+      return <CodeBlock code={text} language={language} locale={locale}/>;
     },
     code({ children: text, ...props }) {
       return <code {...props}>{text}</code>;
