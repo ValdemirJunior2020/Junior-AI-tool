@@ -94,7 +94,8 @@ async def run(url):
         text = str(markdown).strip()[:9000]
         if len(text) < 40:
             raise RuntimeError("Documentation content is empty or unavailable")
-        print(json.dumps({"url": url, "text": text}, ensure_ascii=False))
+    # Emit the JSON payload after Chromium has shut down so it remains the last line.
+    print(json.dumps({"url": url, "text": text}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
