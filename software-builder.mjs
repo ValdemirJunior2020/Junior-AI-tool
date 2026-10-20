@@ -95,7 +95,7 @@ function append(job,line){
       const detail=observation?.error||observation?.stderr||observation?.output||observation?.content||event.error||event.message;
       if(observation?.is_error)message+=" • tool reported an error";
       if(typeof detail==="string"&&detail.trim()){
-        const tail=detail.trim().split(/\\r?\\n/).filter(Boolean).slice(-2).join(" ");
+        const tail=detail.trim().split(/\r?\n/).filter(Boolean).slice(-2).join(" ");
         message+=" • "+tail.slice(0,165);
       }
     }
