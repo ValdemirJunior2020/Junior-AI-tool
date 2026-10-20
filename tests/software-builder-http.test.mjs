@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -55,4 +55,23 @@ test("read-only polling has enough budget for typical overnight status refreshes
     assert.equal(r.status, 200, "poll " + i + " should not be blocked");
     await r.body?.cancel();
   }
+});
+
+test("legacy ready project with invalid files can reach retry validation", async () => {
+  const id="87ab3fcd7cf7d011";
+  const folder=path.join(root,"software-builder",id);
+  await mkdir(path.join(folder,"project"),{recursive:true});
+  await writeFile(path.join(folder,"task.md"),"Test software project");
+  await writeFile(path.join(folder,"project",".junior-wsl-write-check"),"ok");
+  await writeFile(path.join(folder,"status.json"),JSON.stringify({
+    id,name:"WHISPER OVERNIGHT",owner:"test-builder-user",created:Date.now(),
+    state:"ready",log:[]
+  }));
+  const listing=await fetch(base+"/projects");
+  const project=(await listing.json()).projects.find(p=>p.id===id);
+  assert.equal(project.state,"failed");
+  // Builder disabled in tests, so the correct retry path returns 503, not 409.
+  const response=await fetch(base+"/projects/"+id+"/retry",{method:"POST"});
+  assert.equal(response.status,503);
+  assert.match((await response.json()).error,/disabled/i);
 });
