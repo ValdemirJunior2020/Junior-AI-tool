@@ -83,7 +83,8 @@ function command(job) {
     "cd \"$(wslpath -u "+sh(folder)+")\"",
     // Fail with a concrete filesystem error before starting a costly agent session.
     'test -d "$PWD" && test -w "$PWD" || { echo "Builder workspace is not writable: $PWD" >&2; exit 73; }',
-    'printf "ok" > .junior-wsl-write-check && test "$(cat .junior-wsl-write-check)" = "ok" && rm .junior-wsl-write-check',
+    'printf "ok" > .junior-wsl-write-check && test "$(cat .junior-wsl-write-check)" = "ok" && rm -f .junior-wsl-write-check',
+    'printf "Builder working directory: %s\\n" "$PWD"',
     'export OPENHANDS_WORK_DIR="$PWD"',
     "export OPENHANDS_SUPPRESS_BANNER=1",
     "export TERM=dumb",
@@ -325,7 +326,12 @@ builderRouter.post("/projects",async(req,res)=>{
 builderRouter.post("/projects/:id/retry",async(req,res)=>{
   const j=await read(req.params.id);
   if(!j||j.owner!==req.user.id)return res.status(404).json({error:"Project not found"});
-  if(!["failed","interrupted"].includes(j.state))return res.status(409).json({error:"Only failed or interrupted projects can be retried."});
+  // Legacy jobs can still have "ready" persisted after only a WSL probe was
+  // generated. Revalidate the artifact at retry time as well as when listing.
+  const currentFiles=await collectProjectFiles(workspace(j.id)).catch(()=>[]);
+  const validArtifact=validateProjectArtifact(currentFiles,j.name).valid;
+  if(!["failed","interrupted"].includes(j.state)&&!(j.state==="ready"&&!validArtifact))
+    return res.status(409).json({error:"Only failed, interrupted, or invalid completed projects can be retried."});
   if(!enabled())return res.status(503).json({error:"Software Builder is disabled on this PC."});
   if(pending.length>=MAX_QUEUE)return res.status(429).json({error:"The build queue is full."});
   if(pending.some(p=>p.owner===req.user.id)||activeJob?.owner===req.user.id)return res.status(409).json({error:"You already have an active or queued build."});
