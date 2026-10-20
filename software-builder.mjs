@@ -76,6 +76,9 @@ function command(job) {
     'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"',
     "command -v openhands >/dev/null || { echo 'OpenHands is not installed in Ubuntu WSL. Run SETUP-OPENHANDS-LOCAL.ps1.' >&2; exit 127; }",
     "cd \"$(wslpath -u "+sh(folder)+")\"",
+    // Fail with a concrete filesystem error before starting a costly agent session.
+    'test -d "$PWD" && test -w "$PWD" || { echo "Builder workspace is not writable: $PWD" >&2; exit 73; }',
+    'printf "ok" > .junior-wsl-write-check && test "$(cat .junior-wsl-write-check)" = "ok" && rm .junior-wsl-write-check',
     'export OPENHANDS_WORK_DIR="$PWD"',
     "export OPENHANDS_SUPPRESS_BANNER=1",
     "export TERM=dumb",
@@ -184,8 +187,16 @@ async function execute(job,userId) {
           "Run pwd and ls; fix any write or syntax errors before stopping.",
           "Do not delete existing workspace files. You are continuing a multi-stage build.",
           "CURRENT STAGE: "+focus,
-          "Full project requirements (for context):",
-          originalTask
+          // Small local models must receive a focused, bounded task instead of the
+          // same 15K-character full specification on every phase.
+          "Project title: "+job.name,
+          "Context: Build a local Windows Python Whisper audio transcriber with a React UI, an overnight file queue, SQLite checkpoints, safe exports and a single BAT launcher.",
+          "Required details for this stage:",
+          phase==="foundation" ? "Create backend/main.py, backend/requirements.txt, README.md and a minimal unittest in actual files. Run python3 -m py_compile backend/main.py. Do not build the entire application yet." :
+            phase==="backend" ? "Implement local Whisper and FFmpeg processing, watch-folder polling and database persistence in backend. Never delete source audio by default. Include error handling and tests." :
+            "Implement a simple Vite React frontend showing queue progress and settings, integrate backend endpoints, and provide a single Windows BAT launcher. Verify generated files.",
+          "Original requirements (trimmed reference, not instructions to do all phases at once):",
+          originalTask.slice(0,2400)
         ].join("\n");
         await writeFile(path.join(location(job.id),phaseFile),staged,"utf8");
         job.phaseFile=phaseFile;
