@@ -32,7 +32,6 @@ function Auth({ onLogin }) {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [visible, setVisible] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [resetToken, setResetToken] = useState("");
   useEffect(() => {
@@ -69,7 +68,7 @@ function Auth({ onLogin }) {
       <div className="auth-icon"><Sparkles size={27}/></div>
       <h1>{t(mode === "register" ? "Create your account" : mode === "forgot" ? "Reset your password" : mode === "confirm-reset" ? "Choose a new password" : "Welcome to Junior AI")}</h1>
       {mode !== "confirm-reset" && <label>{t("Email address")}<input required type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com"/></label>}
-      {mode !== "forgot" && <label>{t("Password")}<div className="password-field"><input required minLength={mode === "login" ? undefined : 12} maxLength={128} type={visible ? "text" : "password"} autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={e => setPassword(e.target.value)} placeholder={t(mode === "login" ? "Your password" : "At least 12 characters")}/><button className="password-eye" type="button" onClick={() => setVisible(!visible)}>{visible ? <EyeOff size={18}/> : <Eye size={18}/>}</button></div></label>}
+      {mode !== "forgot" && <label>{t("Password")}<div className="password-field"><input required minLength={mode === "login" ? undefined : 12} maxLength={128} type="text" autoComplete="off" value={password} onChange={e => setPassword(e.target.value)} placeholder={t(mode === "login" ? "Your password" : "At least 12 characters")}/></div></label>}
       {mode === "login" && <label className="remember-choice">
         <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}/>
         <span>{t("Remember me")}<small>{t("Keep me signed in for 30 days")}</small></span>
