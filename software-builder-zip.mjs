@@ -6,7 +6,7 @@ import { deflateRawSync } from "node:zlib";
 const table = Array.from({length:256}, (_, n) => { let c=n; for(let k=0;k<8;k++) c=(c>>>1) ^ ((c&1) ? 0xedb88320 : 0); return c>>>0; });
 function crc32(buf) { let c=0xffffffff; for(const b of buf) c=table[(c^b)&255]^(c>>>8); return (c^0xffffffff)>>>0; }
 const excludedDirs = new Set(["node_modules",".git",".venv","venv","__pycache__", ".next",".cache"]);
-const deniedFiles = [/^\.env(?:\.|$)/i, /^\.npmrc$/i, /^\.pypirc$/i, /^id_(?:rsa|ed25519)/i, /^credentials(?:\.|$)/i, /^secret(?:s)?(?:\.|$)/i];
+const deniedFiles = [/^\.junior-wsl-write-check$/i, /^.*\.tmp$/i, /^\.env(?:\.|$)/i, /^\.npmrc$/i, /^\.pypirc$/i, /^id_(?:rsa|ed25519)/i, /^credentials(?:\.|$)/i, /^secret(?:s)?(?:\.|$)/i];
 export async function collectProjectFiles(root, {maxFiles=2000,maxBytes=70*1024*1024}={}) {
   const files=[]; let total=0;
   async function visit(dir, relative="") {
@@ -45,4 +45,19 @@ export function zipBuffers(files) {
   if(files.length>65535) throw Error("Too many ZIP entries");
   const cd=Buffer.concat(central),end=Buffer.alloc(22);end.writeUInt32LE(0x06054b50);end.writeUInt16LE(files.length,8);end.writeUInt16LE(files.length,10);end.writeUInt32LE(cd.length,12);end.writeUInt32LE(offset,16);
   return Buffer.concat([...local,cd,end]);
+}
+
+export function validateProjectArtifact(files, name="") {
+  const names = files.map(f=>f.name.replaceAll("\\","/"));
+  const source=names.some(n=>/\.(?:py|jsx?|tsx?|html|css|go|rs|java|cs)$/i.test(n) && !/(^|\/)(?:test|tests|spec|node_modules)\//i.test(n));
+  const readme=names.some(n=>/(^|\/)README(?:\.md|\.txt)?$/i.test(n));
+  const whisper=/whisper|transcrib/i.test(name);
+  const py=names.some(n=>/\.py$/i.test(n)&&!/(^|\/)(?:test|tests)\//i.test(n));
+  const frontend=names.some(n=>/\.(?:jsx|tsx)$/i.test(n));
+  const issues=[];
+  if(!source)issues.push("no application source files");
+  if(!readme)issues.push("missing README");
+  if(whisper&&!py)issues.push("missing Python backend");
+  if(whisper&&!frontend)issues.push("missing React frontend");
+  return {valid:issues.length===0,issues};
 }
