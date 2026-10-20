@@ -87,8 +87,17 @@ function append(job,line){
     if(message.startsWith("{")){
       const event=JSON.parse(message);
       message=event.kind||event.type||event.tool_name||"OpenHands event";
-      if(event.action?.kind) message+=" • "+event.action.kind;
-      if(event.observation?.is_error) message+=" • tool reported an error";
+      const action=event.action||event.data?.action;
+      const observation=event.observation||event.data?.observation;
+      if(action?.kind)message+=" • "+action.kind;
+      // Preserve a sanitized fragment of terminal errors; generic ObservationEvent
+      // hides useful reasons such as heredoc failures, permissions, and missing tools.
+      const detail=observation?.error||observation?.stderr||observation?.output||observation?.content||event.error||event.message;
+      if(observation?.is_error)message+=" • tool reported an error";
+      if(typeof detail==="string"&&detail.trim()){
+        const tail=detail.trim().split(/\\r?\\n/).filter(Boolean).slice(-2).join(" ");
+        message+=" • "+tail.slice(0,165);
+      }
     }
   }catch{ message=message.slice(0,240); }
   message=message.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g,"").replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g,"");
@@ -127,6 +136,10 @@ async function runOpenHands(job) {
     running.delete(job.id);
   }
 }
+async function inspectWorkspace(job){
+  const entries=await readdir(workspace(job.id),{withFileTypes:true}).catch(()=>[]);
+  append(job,"Workspace check: "+(entries.length?entries.slice(0,12).map(x=>x.name+(x.isDirectory()?"/":"")).join(", "):"no files at project root"));
+}
 async function execute(job,userId) {
   job.state="running";job.started=Date.now();job.finished=null;job.error="";
   await save(job);
@@ -152,13 +165,14 @@ async function execute(job,userId) {
       await save(job);
       await runOpenHands(job);
       const files=await collectProjectFiles(workspace(job.id));
+      if(!files.length)await inspectWorkspace(job);
       if(files.length){
         job.state="ready";
         append(job,"Files created: "+files.length+". OpenHands completed. Independently verify the application before using it.");
         audit(userId,"software_builder_ready",job.id);
         break;
       }
-      if(attempt===2)throw Error("OpenHands completed twice without writing any files. This local model is not executing terminal tools; try a tool-capable model.");
+      if(attempt===2)throw Error("OpenHands ended with no project files. Terminal actions were requested but may have failed, written elsewhere, or been blocked. Check the activity log and WSL project workspace.");
     }
   }catch(e){
     job.state="failed";
