@@ -173,6 +173,7 @@ async function execute(job,userId) {
       // testable increments while preserving the original task and the workspace.
       const originalTask=await readFile(path.join(location(job.id),"task.md"),"utf8");
       const phases=originalTask.length>5000?BUILD_PHASES:[["complete","Create and test the requested software by writing actual files in the current project directory."]];
+      let completedStages=0;
       for(let index=0;index<phases.length;index++){
         const [phase,focus]=phases[index];
         const phaseFile="stage-"+attempt+"-"+index+".md";
@@ -196,18 +197,19 @@ async function execute(job,userId) {
           append(job,"Stage "+phase+" wrote no accessible project files; stopping this attempt.");
           break;
         }
+        completedStages++;
         append(job,"Stage "+phase+" completed; "+stageFiles.length+" saved files.");
       }
       job.phaseFile=null;
       const files=await collectProjectFiles(workspace(job.id));
       if(!files.length)await inspectWorkspace(job);
-      if(files.length){
+      if(files.length&&completedStages===phases.length){
         job.state="ready";
         append(job,"Files created: "+files.length+". OpenHands completed. Independently verify the application before using it.");
         audit(userId,"software_builder_ready",job.id);
         break;
       }
-      if(attempt===2)throw Error("OpenHands ended with no project files. Terminal actions were requested but may have failed, written elsewhere, or been blocked. Check the activity log and WSL project workspace.");
+      if(attempt===2)throw Error("OpenHands did not complete every build stage. Partial files are preserved; check the recorded stages and terminal output before retrying.");
     }
   }catch(e){
     job.state="failed";
