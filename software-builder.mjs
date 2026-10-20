@@ -70,6 +70,7 @@ function command(job) {
     'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"',
     "command -v openhands >/dev/null || { echo 'OpenHands is not installed in Ubuntu WSL. Run SETUP-OPENHANDS-LOCAL.ps1.' >&2; exit 127; }",
     "cd \"$(wslpath -u "+sh(folder)+")\"",
+    'export OPENHANDS_WORK_DIR="$PWD"',
     "export OPENHANDS_SUPPRESS_BANNER=1",
     "export TERM=dumb",
     "export NO_COLOR=1",
