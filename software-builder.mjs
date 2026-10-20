@@ -10,7 +10,11 @@ import { collectProjectFiles, zipBuffers, validateProjectArtifact } from "./soft
 
 export const builderRouter=express.Router();
 const ROOT=path.join(DATA,"software-builder");
-const enabled=()=>process.env.ENABLE_SOFTWARE_BUILDER==="true";
+// Safety stop: the current OpenHands CLI has demonstrably written outside its
+// project workspace into the Junior AI repository. Do not launch it again until
+// the execution backend is moved into a verified OS-enforced sandbox.
+const WORKSPACE_ISOLATION_VERIFIED=false;
+const enabled=()=>process.env.ENABLE_SOFTWARE_BUILDER==="true"&&WORKSPACE_ISOLATION_VERIFIED;
 const running=new Map();
 let activeJob=null;
 const pending=[];
@@ -287,7 +291,7 @@ builderRouter.get("/projects/:id",async(req,res)=>{
   res.json({project:queueInfo(active?{...j,state:active.state,log:active.log}:j)});
 });
 builderRouter.post("/projects",async(req,res)=>{
-  if(!enabled()) return res.status(503).json({error:"Software Builder is disabled. Complete the local OpenHands setup and enable it in .env."});
+  if(!enabled()) return res.status(503).json({error:"Software Builder is temporarily paused for safety: OpenHands wrote outside its project workspace into the Junior AI repository. Existing projects are preserved. A verified isolated runtime is required before builds can resume."});
   if(pending.length>=MAX_QUEUE)return res.status(429).json({error:"The software build queue is full. Please try later."});
   if(pending.some(p=>p.owner===req.user.id)||activeJob?.owner===req.user.id)return res.status(409).json({error:"You already have a build in progress or waiting in line."});
   const prompt=safeText(req.body?.prompt,15000),name=safeText(req.body?.name,75);
@@ -332,7 +336,7 @@ builderRouter.post("/projects/:id/retry",async(req,res)=>{
   const validArtifact=validateProjectArtifact(currentFiles,j.name).valid;
   if(!["failed","interrupted"].includes(j.state)&&!(j.state==="ready"&&!validArtifact))
     return res.status(409).json({error:"Only failed, interrupted, or invalid completed projects can be retried."});
-  if(!enabled())return res.status(503).json({error:"Software Builder is disabled on this PC."});
+  if(!enabled())return res.status(503).json({error:"Software Builder is temporarily paused for safety because OpenHands wrote into the Junior AI repository outside its intended workspace."});
   if(pending.length>=MAX_QUEUE)return res.status(429).json({error:"The build queue is full."});
   if(pending.some(p=>p.owner===req.user.id)||activeJob?.owner===req.user.id)return res.status(409).json({error:"You already have an active or queued build."});
   const original=await readFile(path.join(location(j.id),"task.md"),"utf8").catch(()=>null);
