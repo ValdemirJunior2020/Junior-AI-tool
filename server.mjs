@@ -37,7 +37,12 @@ app.use(helmet({ contentSecurityPolicy: process.env.NODE_ENV === "production" ? 
 app.use(cookieParser());
 app.use(express.json({ limit: "80kb" }));
 app.use("/api", (_req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 180, standardHeaders: "draft-7", legacyHeaders: false }));
+// Frequent, authenticated builder status polls have a separate account-based limit
+// in builderRouter. Keep the app-wide limiter for all other requests.
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000, limit: 180, standardHeaders: "draft-7", legacyHeaders: false,
+  skip: req => req.method === "GET" && /^\/api\/builder\/(?:status|projects(?:\/[a-f0-9]{16})?)$/.test(req.path)
+}));
 const origins = new Set([PUBLIC_URL]);
 if (process.env.NODE_ENV !== "production") {
   for (const origin of ["http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:5173", "http://127.0.0.1:5173"]) origins.add(origin);
@@ -52,7 +57,7 @@ app.use((req, res, next) => {
 });
 app.get("/api/health", (_req, res) => res.json({ ok: true, runtime: "local", retentionDays: 7, emailConfigured: mailConfigured }));
 app.use("/api/auth", authRouter);
-// Software Builder remains restricted to the local PC until sandboxed remote execution is available.
+// Remote signed-in users may view and download their projects; command execution stays local until sandboxed remote execution is proven.
 app.use("/api/builder", requireUser, builderRouter);
 const workLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 16, standardHeaders: "draft-7", legacyHeaders: false, keyGenerator: req => req.user.id });
 app.get("/api/models", requireUser, async (_req, res) => {
@@ -427,6 +432,8 @@ if (existsSync("./dist/index.html")) {
   app.use(express.static("dist", { index: false, setHeaders(res, filepath) {
     if (filepath.endsWith(".html")) res.setHeader("Cache-Control", "no-cache, must-revalidate");
   } }));
+  // Missing outdated Vite assets must return 404, not index.html with a CSS/JS MIME mismatch.
+  app.get("/assets/*", (_req, res) => res.status(404).type("text/plain").send("Asset missing; refresh Junior AI to load the newest build."));
   app.get("*", (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.sendFile(path.resolve("dist/index.html"));
