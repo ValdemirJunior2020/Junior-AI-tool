@@ -1,4 +1,5 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -31,12 +32,26 @@ function localBrowser(req) {
     && (!origin||/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(origin))
     && ["127.0.0.1","::1","::ffff:127.0.0.1"].includes(address);
 }
-builderRouter.use((req,res,next)=>localBrowser(req)?next():res.status(403).json({error:"Software Builder is available only from the local Junior AI website on this PC."}));
+// Read-only project tracking is safe for signed-in users through the public Netlify proxy.
+// Starting or retrying the agent still requires a local browser: OpenHands runs OS commands
+// in WSL and the project workspace is not a proven security sandbox for remote execution.
+builderRouter.use((req,res,next)=>{
+  if(req.method==="GET"||req.method==="HEAD")return next();
+  if(localBrowser(req))return next();
+  res.status(403).json({error:"Remote access is read-only. Open the local Junior AI website on this PC to start or retry software builds."});
+});
+// Builder polling has its own per-account budget so status updates cannot consume the
+// app-wide limit. POSTs and ZIP downloads retain the normal app-wide protection.
+builderRouter.use(rateLimit({
+  windowMs:15*60*1000,limit:600,standardHeaders:"draft-7",legacyHeaders:false,
+  skip:req=>req.method!=="GET"&&req.method!=="HEAD",
+  keyGenerator:req=>req.user.id
+}));
 const location=id=>path.join(ROOT,id);
 const manifest=id=>path.join(location(id),"status.json");
 const workspace=id=>path.join(location(id),"project");
 async function save(job){
-  const data={id:job.id,name:job.name,created:job.created,started:job.started||null,finished:job.finished||null,updated:Date.now(),state:job.state,owner:job.owner,model:job.model,error:job.error||"",log:(job.log||[]).slice(-45)};
+  const data={id:job.id,name:job.name,created:job.created,started:job.started||null,finished:job.finished||null,updated:Date.now(),state:job.state,owner:job.owner,model:job.model,attempt:job.attempt||0,error:job.error||"",log:(job.log||[]).slice(-45)};
   const dest=manifest(job.id);await mkdir(location(job.id),{recursive:true});
   await writeFile(dest+".tmp",JSON.stringify(data,null,2));await rename(dest+".tmp",dest);
 }
@@ -79,8 +94,7 @@ function append(job,line){
   job.log.push(message.slice(0,240));
   job.log=job.log.slice(-45);
 }
-async function execute(job,userId) {
-  job.state="running";job.started=Date.now();await save(job);
+async function runOpenHands(job) {
   const args=["--distribution","Ubuntu","--","bash","-lc",command(job)];
   const child=spawn("wsl.exe",args,{windowsHide:true,stdio:["ignore","pipe","pipe"],shell:false,env:process.env});
   running.set(job.id,child);
@@ -88,30 +102,69 @@ async function execute(job,userId) {
   const onData=chunk=>{
     lastOutputAt=Date.now();
     bytes+=chunk.length;
-    if(bytes>3*1024*1024) return; // Avoid unbounded event output.
+    if(bytes>3*1024*1024) return;
     partial+=chunk.toString("utf8");
-    const lines=partial.split(/\r?\n/);partial=lines.pop()||"";
+    const lines=partial.split(/\\r?\\n/);partial=lines.pop()||"";
     for(const line of lines) append(job,line);
   };
   child.stdout.on("data",onData);child.stderr.on("data",onData);
   let stalled=false;
   const watchdog=setInterval(()=>{
-    if(Date.now()-lastOutputAt>=STALL_MS){stalled=true;append(job,"OpenHands produced no output for 2 hours. Stopping stalled process so the shared queue can continue.");child.kill();}
+    if(Date.now()-lastOutputAt>=STALL_MS){
+      stalled=true;
+      append(job,"OpenHands produced no output for 2 hours. Stopping stalled process so the shared queue can continue.");
+      child.kill();
+    }
   },60000);
   try{
     const exitCode=await new Promise((resolve,reject)=>{child.once("error",reject);child.once("close",resolve);});
-    if(partial.trim()) append(job,partial);
-    if(stalled) throw Error("OpenHands stopped after two hours without output. No total build duration limit is imposed; existing files are preserved.");
-    if(exitCode!==0) throw Error("OpenHands exited with code "+exitCode+". Check the activity log and WSL/Ollama setup.");
-    const files=await collectProjectFiles(workspace(job.id));
-    if(!files.length) throw Error("OpenHands completed without writing any files. The selected local model may not be using terminal tools correctly. Try a tool-capable model and first test: create hello.py with print('ok').");
-    job.state="ready";job.log.push("Files created: "+files.length+". OpenHands completed. Independently verify the application before using it.");
-    audit(userId,"software_builder_ready",job.id);
+    if(partial.trim())append(job,partial);
+    if(stalled)throw Error("OpenHands stopped after two hours without output. Existing files are preserved.");
+    if(exitCode!==0)throw Error("OpenHands exited with code "+exitCode+". Check the activity log and WSL/Ollama setup.");
+  }finally{
+    clearInterval(watchdog);
+    running.delete(job.id);
+  }
+}
+async function execute(job,userId) {
+  job.state="running";job.started=Date.now();job.finished=null;job.error="";
+  await save(job);
+  try{
+    for(let attempt=1;attempt<=2;attempt++){
+      job.attempt=attempt;
+      if(attempt===2){
+        const original=await readFile(path.join(location(job.id),"task.md"),"utf8");
+        const retry=[
+          "# Immediate execution required: previous run produced no files",
+          "Do not describe a plan, do not answer with prose, and do not finish without working files.",
+          "Your FIRST response must be a terminal tool call that creates an actual source file in this working directory.",
+          "Start with: mkdir -p backend frontend/src",
+          "Then implement the requirements below by writing the code through terminal tools.",
+          "Check files with ls -la and run practical tests before finishing.",
+          "If tool execution is unavailable, report that failure; do not claim you created software.",
+          "",
+          original
+        ].join("\\n");
+        await writeFile(path.join(location(job.id),"retry.md"),retry,"utf8");
+        append(job,"First attempt created no files. Automatically retrying with direct terminal instructions.");
+      }
+      await save(job);
+      await runOpenHands(job);
+      const files=await collectProjectFiles(workspace(job.id));
+      if(files.length){
+        job.state="ready";
+        append(job,"Files created: "+files.length+". OpenHands completed. Independently verify the application before using it.");
+        audit(userId,"software_builder_ready",job.id);
+        break;
+      }
+      if(attempt===2)throw Error("OpenHands completed twice without writing any files. This local model is not executing terminal tools; try a tool-capable model.");
+    }
   }catch(e){
-    job.state="failed";job.error=safeText(e.message||String(e),230);
+    job.state="failed";
+    job.error=safeText(e.message||String(e),230);
     append(job,job.error);audit(userId,"software_builder_failed",job.id);
   }finally{
-    clearInterval(watchdog);job.finished=Date.now();running.delete(job.id);
+    job.finished=Date.now();
     await save(job).catch(e=>console.error("[Builder] Could not persist job:",e.message));
   }
 }
@@ -148,7 +201,7 @@ export async function cleanupBuilder(cutoff){
 builderRouter.get("/status",async(_req,res)=>{
   let model=modelName(),configurationError="";
   try{ollamaEndpoint();}catch(e){configurationError=e.message;}
-  res.json({enabled:enabled(),local:true,running:running.size,waiting:pending.length,maxBuildMinutes:null,model,configurationError,workspace:"Local Windows PC / Ubuntu WSL",engine:"OpenHands CLI + Ollama"});
+  res.json({enabled:enabled(),local:localBrowser(_req),remoteReadOnly:!localBrowser(_req),running:running.size,waiting:pending.length,maxBuildMinutes:null,model,configurationError,workspace:"Local Windows PC / Ubuntu WSL",engine:"OpenHands CLI + Ollama"});
 });
 builderRouter.get("/projects",async(req,res)=>{
   const entries=await readdir(ROOT,{withFileTypes:true}).catch(()=>[]);
@@ -166,8 +219,8 @@ builderRouter.get("/projects/:id",async(req,res)=>{
 builderRouter.post("/projects",async(req,res)=>{
   if(!enabled()) return res.status(503).json({error:"Software Builder is disabled. Complete the local OpenHands setup and enable it in .env."});
   if(pending.length>=MAX_QUEUE)return res.status(429).json({error:"The software build queue is full. Please try later."});
-  if(pending.some(p=>p.owner===req.user.id)||[...running.keys()].some(id=>activeJob?.id===id&&activeJob.owner===req.user.id))return res.status(409).json({error:"You already have a build in progress or waiting in line."});
-  const prompt=safeText(req.body?.prompt,4500),name=safeText(req.body?.name,75);
+  if(pending.some(p=>p.owner===req.user.id)||activeJob?.owner===req.user.id)return res.status(409).json({error:"You already have a build in progress or waiting in line."});
+  const prompt=safeText(req.body?.prompt,15000),name=safeText(req.body?.name,75);
   if(prompt.length<20) return res.status(400).json({error:"Describe the software in at least 20 characters."});
   if(!name) return res.status(400).json({error:"Enter a project name."});
   try{ollamaEndpoint();}catch(e){return res.status(400).json({error:e.message});}
@@ -199,6 +252,22 @@ builderRouter.post("/projects",async(req,res)=>{
   }catch(e){
     if(!res.headersSent) res.status(500).json({error:"Unable to initialize the project safely."});
   }
+});
+builderRouter.post("/projects/:id/retry",async(req,res)=>{
+  const j=await read(req.params.id);
+  if(!j||j.owner!==req.user.id)return res.status(404).json({error:"Project not found"});
+  if(!["failed","interrupted"].includes(j.state))return res.status(409).json({error:"Only failed or interrupted projects can be retried."});
+  if(!enabled())return res.status(503).json({error:"Software Builder is disabled on this PC."});
+  if(pending.length>=MAX_QUEUE)return res.status(429).json({error:"The build queue is full."});
+  if(pending.some(p=>p.owner===req.user.id)||activeJob?.owner===req.user.id)return res.status(409).json({error:"You already have an active or queued build."});
+  const original=await readFile(path.join(location(j.id),"task.md"),"utf8").catch(()=>null);
+  if(!original)return res.status(409).json({error:"The original build instructions are unavailable."});
+  const job={...j,started:null,finished:null,attempt:0,error:"",state:"queued",log:[...(j.log||[]).slice(-35),"Retry requested; original files and task preserved."]};
+  await save(job);
+  pending.push(job);
+  audit(req.user.id,"software_builder_retried",j.id);
+  res.status(202).json({id:j.id,state:job.state,queuePosition:pending.length});
+  void drainQueue();
 });
 builderRouter.get("/projects/:id/download",async(req,res)=>{
   const j=await read(req.params.id);
