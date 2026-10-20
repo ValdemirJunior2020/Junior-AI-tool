@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile, symlink, rm } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { inflateRawSync } from "node:zlib";
-import { collectProjectFiles, zipBuffers } from "../software-builder-zip.mjs";
+import { collectProjectFiles, zipBuffers, validateProjectArtifact } from "../software-builder-zip.mjs";
 
 test("ZIP emits valid local entries, central directory and original bytes", () => {
   const files=[{name:"README.md",data:Buffer.from("hello world")},{name:"src/main.py",data:Buffer.from("print('ok')\n")}];
@@ -49,4 +49,23 @@ test("project collector imposes size limit",async()=>{
   await writeFile(path.join(root,"big.bin"),Buffer.alloc(100));
   await assert.rejects(()=>collectProjectFiles(root,{maxBytes:50}),/too large/);
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test("builder never accepts a WSL probe as completed software", async () => {
+  const root=await mkdtemp(path.join(os.tmpdir(),"junior-probe-"));
+  try {
+    await writeFile(path.join(root,".junior-wsl-write-check"),"ok");
+    const files=await collectProjectFiles(root);
+    assert.deepEqual(files,[]);
+    const result=validateProjectArtifact(files,"WHISPER OVERNIGHT");
+    assert.equal(result.valid,false);
+    assert.ok(result.issues.includes("missing Python backend"));
+    assert.ok(result.issues.includes("missing React frontend"));
+  } finally { await rm(root,{recursive:true,force:true}); }
+});
+test("Whisper artifacts require actual backend, React source and README",()=>{
+  const file=name=>({name,data:Buffer.from("code")});
+  assert.equal(validateProjectArtifact([file("backend/main.py"),file("README.md")],"WHISPER OVERNIGHT").valid,false);
+  assert.equal(validateProjectArtifact([file("backend/main.py"),file("frontend/src/App.jsx"),file("README.md")],"WHISPER OVERNIGHT").valid,true);
+  assert.equal(validateProjectArtifact([file("hello.py"),file("README.md")],"hello world").valid,true);
 });
