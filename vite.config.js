@@ -4,6 +4,9 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   build: {
+    // Preserve hashed assets during local rebuilds: browsers with older open tabs
+    // must not receive index.html instead of the CSS/JS file they already loaded.
+    emptyOutDir: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
