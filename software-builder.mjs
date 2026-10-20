@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { mkdir, writeFile, readFile, readdir, rm } from "node:fs/promises";
 import { saveBuilderStatus } from "./builder-status-store.mjs";
 import { DATA, audit, safeText } from "./db.mjs";
-import { collectProjectFiles, zipBuffers } from "./software-builder-zip.mjs";
+import { collectProjectFiles, zipBuffers, validateProjectArtifact } from "./software-builder-zip.mjs";
 
 export const builderRouter=express.Router();
 const ROOT=path.join(DATA,"software-builder");
@@ -66,6 +66,11 @@ async function read(id) {
   const j=await readFile(manifest(id),"utf8").then(JSON.parse).catch(()=>null);
   if(!j||j.id!==id) return null;
   if(j.state==="running"&&!running.has(id)) return {...j,state:"interrupted",error:"Junior AI restarted before OpenHands finished. Files are preserved."};
+  if(j.state==="ready") {
+    const files=await collectProjectFiles(workspace(id)).catch(()=>[]);
+    const check=validateProjectArtifact(files,j.name);
+    if(!check.valid)return {...j,state:"failed",error:"Invalid build artifact: "+check.issues.join(", ")+". Existing files are preserved."};
+  }
   return j;
 }
 const sh=s=>"'"+String(s).replaceAll("'","'\\''")+"'";
@@ -214,13 +219,14 @@ async function execute(job,userId) {
       job.phaseFile=null;
       const files=await collectProjectFiles(workspace(job.id));
       if(!files.length)await inspectWorkspace(job);
-      if(files.length&&completedStages===phases.length){
+      const artifact=validateProjectArtifact(files,job.name);
+      if(files.length&&completedStages===phases.length&&artifact.valid){
         job.state="ready";
         append(job,"Files created: "+files.length+". OpenHands completed. Independently verify the application before using it.");
         audit(userId,"software_builder_ready",job.id);
         break;
       }
-      if(attempt===2)throw Error("OpenHands did not complete every build stage. Partial files are preserved; check the recorded stages and terminal output before retrying.");
+      if(attempt===2)throw Error(artifact.issues.length?"Build artifact incomplete: "+artifact.issues.join(", "):"OpenHands did not complete every build stage. Partial files are preserved; check the recorded stages and terminal output before retrying.");
     }
   }catch(e){
     job.state="failed";
@@ -338,7 +344,8 @@ builderRouter.get("/projects/:id/download",async(req,res)=>{
   if(j.state!=="ready") return res.status(409).json({error:"ZIP is available only after OpenHands finishes and project files exist."});
   try{
     const files=await collectProjectFiles(workspace(j.id));
-    if(!files.length) return res.status(409).json({error:"Project has no files to download."});
+    const verification=validateProjectArtifact(files,j.name);
+    if(!verification.valid)return res.status(409).json({error:"Build artifact is incomplete: "+verification.issues.join(", ")});
     const zip=zipBuffers(files);
     const name=j.name.replace(/[^A-Za-z0-9_-]/g,"-").slice(0,45)||"software";
     res.set("Content-Type","application/zip");
