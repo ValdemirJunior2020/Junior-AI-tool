@@ -51,8 +51,14 @@ builderRouter.use(rateLimit({
 const location=id=>path.join(ROOT,id);
 const manifest=id=>path.join(location(id),"status.json");
 const workspace=id=>path.join(location(id),"project");
+const BUILD_PHASES=[
+  ["foundation","Write a minimal working backend entrypoint, an executable smoke test and a README in this workspace. Focus on actual files, not narration. Inspect the created files before ending."],
+  ["backend","Using existing files, implement the core backend application: audio discovery, Whisper integration, a durable queue and persistence. Write files in small, syntactically valid increments. Run tests where possible."],
+  ["frontend","Using existing files, implement the React UI and Windows launcher, integrate with the backend, fix build errors and document any unfinished work. Do not erase existing code."]
+];
+
 async function save(job){
-  const data={id:job.id,name:job.name,created:job.created,started:job.started||null,finished:job.finished||null,updated:Date.now(),state:job.state,owner:job.owner,model:job.model,attempt:job.attempt||0,error:job.error||"",log:(job.log||[]).slice(-45)};
+  const data={id:job.id,name:job.name,created:job.created,started:job.started||null,finished:job.finished||null,updated:Date.now(),state:job.state,owner:job.owner,model:job.model,attempt:job.attempt||0,phaseFile:job.phaseFile||null,error:job.error||"",log:(job.log||[]).slice(-45)};
   await saveBuilderStatus(manifest(job.id),data);
 }
 async function read(id) {
@@ -77,7 +83,7 @@ function command(job) {
     "export LLM_API_KEY=local-ollama",
     "export LLM_MODEL="+sh("openai/"+job.model),
     "export LLM_BASE_URL="+sh(ollamaEndpoint()),
-    "exec openhands --headless --json --override-with-envs --file \"$(wslpath -u "+sh(path.join(root,job.attempt===2?"retry.md":"task.md"))+")\""
+    "exec openhands --headless --json --override-with-envs --file \"$(wslpath -u "+sh(path.join(root,job.phaseFile|| (job.attempt===2?"retry.md":"task.md")))+")\""
   ].join("\n");
 }
 function append(job,line){
@@ -163,7 +169,36 @@ async function execute(job,userId) {
         append(job,"First attempt created no files. Automatically retrying with direct terminal instructions.");
       }
       await save(job);
-      await runOpenHands(job);
+      // Complex specifications overwhelm small local models. Start with small,
+      // testable increments while preserving the original task and the workspace.
+      const originalTask=await readFile(path.join(location(job.id),"task.md"),"utf8");
+      const phases=originalTask.length>5000?BUILD_PHASES:[["complete","Create and test the requested software by writing actual files in the current project directory."]];
+      for(let index=0;index<phases.length;index++){
+        const [phase,focus]=phases[index];
+        const phaseFile="stage-"+attempt+"-"+index+".md";
+        const staged=[
+          "# OpenHands: "+phase+" (stage "+(index+1)+"/"+phases.length+")",
+          "MANDATORY: write source files into the CURRENT working directory.",
+          "Use short, reliable terminal commands. Avoid giant heredocs and truncated output.",
+          "Run pwd and ls; fix any write or syntax errors before stopping.",
+          "Do not delete existing workspace files. You are continuing a multi-stage build.",
+          "CURRENT STAGE: "+focus,
+          "Full project requirements (for context):",
+          originalTask
+        ].join("\n");
+        await writeFile(path.join(location(job.id),phaseFile),staged,"utf8");
+        job.phaseFile=phaseFile;
+        append(job,"OpenHands stage "+(index+1)+"/"+phases.length+": "+phase);
+        await save(job);
+        await runOpenHands(job);
+        const stageFiles=await collectProjectFiles(workspace(job.id));
+        if(!stageFiles.length){
+          append(job,"Stage "+phase+" wrote no accessible project files; stopping this attempt.");
+          break;
+        }
+        append(job,"Stage "+phase+" completed; "+stageFiles.length+" saved files.");
+      }
+      job.phaseFile=null;
       const files=await collectProjectFiles(workspace(job.id));
       if(!files.length)await inspectWorkspace(job);
       if(files.length){
