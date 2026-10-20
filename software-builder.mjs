@@ -3,7 +3,8 @@ import rateLimit from "express-rate-limit";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
-import { mkdir, writeFile, readFile, readdir, rename, rm } from "node:fs/promises";
+import { mkdir, writeFile, readFile, readdir, rm } from "node:fs/promises";
+import { saveBuilderStatus } from "./builder-status-store.mjs";
 import { DATA, audit, safeText } from "./db.mjs";
 import { collectProjectFiles, zipBuffers } from "./software-builder-zip.mjs";
 
@@ -52,8 +53,7 @@ const manifest=id=>path.join(location(id),"status.json");
 const workspace=id=>path.join(location(id),"project");
 async function save(job){
   const data={id:job.id,name:job.name,created:job.created,started:job.started||null,finished:job.finished||null,updated:Date.now(),state:job.state,owner:job.owner,model:job.model,attempt:job.attempt||0,error:job.error||"",log:(job.log||[]).slice(-45)};
-  const dest=manifest(job.id);await mkdir(location(job.id),{recursive:true});
-  await writeFile(dest+".tmp",JSON.stringify(data,null,2));await rename(dest+".tmp",dest);
+  await saveBuilderStatus(manifest(job.id),data);
 }
 async function read(id) {
   if(!ID.test(id)) return null;
