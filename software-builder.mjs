@@ -104,7 +104,7 @@ async function runOpenHands(job) {
     bytes+=chunk.length;
     if(bytes>3*1024*1024) return;
     partial+=chunk.toString("utf8");
-    const lines=partial.split(/\\r?\\n/);partial=lines.pop()||"";
+    const lines=partial.split(/\r?\n/);partial=lines.pop()||"";
     for(const line of lines) append(job,line);
   };
   child.stdout.on("data",onData);child.stderr.on("data",onData);
@@ -144,7 +144,7 @@ async function execute(job,userId) {
           "If tool execution is unavailable, report that failure; do not claim you created software.",
           "",
           original
-        ].join("\\n");
+        ].join("\n");
         await writeFile(path.join(location(job.id),"retry.md"),retry,"utf8");
         append(job,"First attempt created no files. Automatically retrying with direct terminal instructions.");
       }
