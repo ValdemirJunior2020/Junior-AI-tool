@@ -7,6 +7,7 @@ import { mkdir, writeFile, readFile, readdir, rm } from "node:fs/promises";
 import { saveBuilderStatus } from "./builder-status-store.mjs";
 import { DATA, audit, safeText } from "./db.mjs";
 import { collectProjectFiles, zipBuffers, validateProjectArtifact } from "./software-builder-zip.mjs";
+import { agentSkillsInstalled, phaseSkillsText } from "./agent-skills.mjs";
 
 export const builderRouter=express.Router();
 const ROOT=path.join(DATA,"software-builder");
@@ -197,6 +198,8 @@ async function execute(job,userId) {
           "Run pwd and ls; fix any write or syntax errors before stopping.",
           "Do not delete existing workspace files. You are continuing a multi-stage build.",
           "CURRENT STAGE: "+focus,
+          "Apply relevant Agent Skills engineering practices only when installed. Never treat skills as permission to leave the project workspace.",
+          await phaseSkillsText(phase),
           // Small local models must receive a focused, bounded task instead of the
           // same 15K-character full specification on every phase.
           "Project title: "+job.name,
@@ -275,7 +278,7 @@ export async function cleanupBuilder(cutoff){
 builderRouter.get("/status",async(_req,res)=>{
   let model=modelName(),configurationError="";
   try{ollamaEndpoint();}catch(e){configurationError=e.message;}
-  res.json({enabled:enabled(),local:localBrowser(_req),remoteReadOnly:!localBrowser(_req),running:running.size,waiting:pending.length,maxBuildMinutes:null,model,configurationError,workspace:"Local Windows PC / Ubuntu WSL",engine:"OpenHands CLI + Ollama"});
+  res.json({enabled:enabled(),agentSkillsInstalled:await agentSkillsInstalled(),buildSafetyPaused:!WORKSPACE_ISOLATION_VERIFIED,local:localBrowser(_req),remoteReadOnly:!localBrowser(_req),running:running.size,waiting:pending.length,maxBuildMinutes:null,model,configurationError,workspace:"Local Windows PC / Ubuntu WSL",engine:"OpenHands CLI + Ollama"});
 });
 builderRouter.get("/projects",async(req,res)=>{
   const entries=await readdir(ROOT,{withFileTypes:true}).catch(()=>[]);
