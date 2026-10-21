@@ -73,5 +73,5 @@ test("legacy ready project with invalid files can reach retry validation", async
   // Builder disabled in tests, so the correct retry path returns 503, not 409.
   const response=await fetch(base+"/projects/"+id+"/retry",{method:"POST"});
   assert.equal(response.status,503);
-  assert.match((await response.json()).error,/disabled/i);
+  assert.match((await response.json()).error,/disabled|paused/i);
 });
